@@ -17,7 +17,10 @@ export default function Navbar() {
   async function init() {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
-    if (user) await getUnreadCount(user.id)
+    if (user) {
+      await getUnreadCount(user.id)
+      subscribeToNotifications(user.id)
+    }
   }
 
   async function getUnreadCount(userId) {
@@ -25,6 +28,20 @@ export default function Navbar() {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId).eq('is_read', false)
     setUnreadCount(count || 0)
+  }
+
+  function subscribeToNotifications(userId) {
+    supabase
+      .channel('notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`
+      }, () => {
+        getUnreadCount(userId)
+      })
+      .subscribe()
   }
 
   async function handleLogout() {
@@ -52,6 +69,7 @@ export default function Navbar() {
               borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none'
             }}>＋ 投稿する</Link>
 
+            <Link href="/scouts" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>📨</Link>
             <Link href="/search" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>🔍</Link>
 
             <div style={{ position: 'relative' }}>
@@ -62,7 +80,8 @@ export default function Navbar() {
                   width: '16px', height: '16px', borderRadius: '50%',
                   background: '#e74c3c', color: '#fff',
                   fontSize: '10px', fontWeight: '700',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  pointerEvents: 'none'
                 }}>{unreadCount > 9 ? '9+' : unreadCount}</div>
               )}
             </div>
@@ -85,4 +104,4 @@ export default function Navbar() {
       </div>
     </nav>
   )
-} 
+}

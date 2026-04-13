@@ -115,6 +115,11 @@ function MessagesContent() {
       if (!threads.includes(selectedDM)) {
         setThreads(prev => [...prev, selectedDM])
       }
+      await supabase.from('notifications').insert({
+        user_id: selectedDM,
+        from_id: user.id,
+        type: 'message'
+      })
     }
   }
 
