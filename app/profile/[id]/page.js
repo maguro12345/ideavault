@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import Navbar from '../../../components/Navbar'
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null)
@@ -94,10 +95,20 @@ export default function ProfilePage() {
       if (profile.is_private) {
         await supabase.from('follow_requests').insert({ requester_id: user.id, target_id: params.id })
         setFollowState('requested')
+        await supabase.from('notifications').insert({
+          user_id: params.id,
+          from_id: user.id,
+          type: 'follow_request'
+        })
       } else {
         await supabase.from('follows').insert({ follower_id: user.id, following_id: params.id })
         setFollowState('following')
         setFollowCounts(prev => ({ ...prev, followers: prev.followers + 1 }))
+        await supabase.from('notifications').insert({
+          user_id: params.id,
+          from_id: user.id,
+          type: 'follow'
+        })
       }
     }
   }
@@ -158,16 +169,7 @@ export default function ProfilePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
-      <nav style={{
-        background: '#fff', borderBottom: '0.5px solid rgba(0,0,0,0.1)',
-        padding: '0 1.5rem', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px', position: 'sticky', top: 0, zIndex: 10
-      }}>
-        <Link href="/" style={{ fontSize: '20px', fontWeight: '700', letterSpacing: '-0.5px', textDecoration: 'none', color: 'inherit' }}>
-          IDEA<span style={{ color: '#1D9E75' }}>VAULT</span>
-        </Link>
-        <Link href="/" style={{ fontSize: '13px', color: '#6b6b67', textDecoration: 'none' }}>← フィードに戻る</Link>
-      </nav>
+      <Navbar />
 
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '2rem 1.25rem' }}>
 

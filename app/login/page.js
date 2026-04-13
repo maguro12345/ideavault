@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -118,6 +119,15 @@ export default function LoginPage() {
           >
             {isSignUp ? 'すでにアカウントをお持ちの方はこちら' : 'アカウントをお持ちでない方はこちら'}
           </button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '8px' }}>
+          <Link href="/register-company" style={{
+            fontSize: '12px', color: '#6b6b67', textDecoration: 'none',
+            borderBottom: '1px solid rgba(0,0,0,0.15)', paddingBottom: '1px'
+          }}>
+            🏢 法人・投資家の方はこちら
+          </Link>
         </div>
       </div>
     </div>
