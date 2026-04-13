@@ -28,7 +28,7 @@ export default function Home() {
   async function getIdeas() {
     const { data } = await supabase
       .from('ideas')
-      .select('*, profiles(username, full_name, is_company, company_name)')
+      .select('*, profiles(id, username, full_name, is_company, company_name)')
       .order('created_at', { ascending: false })
     if (data) {
       setIdeas(data)
@@ -159,7 +159,7 @@ export default function Home() {
               const profile = idea.profiles
               const name = profile?.is_company ? profile.company_name : profile?.full_name || profile?.username || '名無し'
               return (
-                <Link key={idea.id} href={`/ideas/${idea.id}`} style={{ textDecoration: 'none' }}>
+                <div key={idea.id} onClick={() => router.push(`/ideas/${idea.id}`)} style={{ textDecoration: 'none', cursor: 'pointer' }}>
                   <div style={{
                     background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)',
                     borderRadius: '14px', padding: '1.15rem 1.3rem',
@@ -195,23 +195,27 @@ export default function Home() {
                       </div>
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Link
+                        href={`/profile/${profile?.id}`}
+                        onClick={e => e.stopPropagation()}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                      >
                         <div style={{
                           width: '22px', height: '22px', borderRadius: '50%',
                           background: '#E1F5EE', display: 'flex', alignItems: 'center',
                           justifyContent: 'center', fontSize: '10px', fontWeight: '600', color: '#0F6E56'
                         }}>{name[0]}</div>
                         <span style={{ fontSize: '11px', color: '#6b6b67' }}>{name}</span>
-                        {idea.category && (
-                          <span style={{
-                            fontSize: '11px', background: '#f0eeea', padding: '2px 8px',
-                            borderRadius: '20px', color: '#6b6b67'
-                          }}>{idea.category}</span>
-                        )}
-                      </div>
+                      </Link>
+                      {idea.category && (
+                        <span style={{
+                          fontSize: '11px', background: '#f0eeea', padding: '2px 8px',
+                          borderRadius: '20px', color: '#6b6b67'
+                        }}>{idea.category}</span>
+                      )}
                     </div>
                   </div>
-                </Link>
+                </div>
               )
             })}
           </div>
