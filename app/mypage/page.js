@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Navbar from '../../components/Navbar'
 
 export default function MyPage() {
   const [user, setUser] = useState(null)
@@ -18,7 +19,7 @@ export default function MyPage() {
   const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
   const [form, setForm] = useState({
     full_name: '', username: '', bio: '', location: '',
-    tags: '', is_company: false, company_name: ''
+    tags: '', is_company: false, company_name: '', is_private: false
   })
   const fileInputRef = useRef(null)
   const bannerInputRef = useRef(null)
@@ -49,7 +50,8 @@ export default function MyPage() {
         location: data.location || '',
         tags: (data.tags || []).join(', '),
         is_company: data.is_company || false,
-        company_name: data.company_name || ''
+        company_name: data.company_name || '',
+        is_private: data.is_private || false
       })
     }
   }
@@ -112,7 +114,8 @@ export default function MyPage() {
       location: form.location,
       tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
       is_company: form.is_company,
-      company_name: form.company_name
+      company_name: form.company_name,
+      is_private: form.is_private
     })
     if (error) { alert('エラー: ' + error.message); setSaving(false); return }
     await getProfile(user.id)
@@ -149,16 +152,7 @@ export default function MyPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
-      <nav style={{
-        background: '#fff', borderBottom: '0.5px solid rgba(0,0,0,0.1)',
-        padding: '0 1.5rem', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px', position: 'sticky', top: 0, zIndex: 10
-      }}>
-        <Link href="/" style={{ fontSize: '20px', fontWeight: '700', letterSpacing: '-0.5px', textDecoration: 'none', color: 'inherit' }}>
-          IDEA<span style={{ color: '#1D9E75' }}>VAULT</span>
-        </Link>
-        <Link href="/" style={{ fontSize: '13px', color: '#6b6b67', textDecoration: 'none' }}>← フィードに戻る</Link>
-      </nav>
+      <Navbar />
 
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '2rem 1.25rem' }}>
 
@@ -266,6 +260,12 @@ export default function MyPage() {
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b6b67', cursor: 'pointer' }}>
                     <input type="checkbox" checked={form.is_company} onChange={e => setForm({ ...form, is_company: e.target.checked })} />
                     企業・法人アカウント
+                  </label>
+                </div>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b6b67', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={form.is_private} onChange={e => setForm({ ...form, is_private: e.target.checked })} />
+                    🔒 鍵垢にする（フォロワーのみ企画を閲覧可能）
                   </label>
                 </div>
                 {form.is_company && (

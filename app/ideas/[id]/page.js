@@ -1,13 +1,20 @@
- 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import Navbar from '../../../components/Navbar'
 
 export default function IdeaDetailPage() {
   const [idea, setIdea] = useState(null)
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [liked, setLiked] = useState(false)
+  const [likeCount, setLikeCount] = useState(0)
+  const [showMessage, setShowMessage] = useState(false)
+  const [messageContent, setMessageContent] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
   const router = useRouter()
   const params = useParams()
   const supabase = createClient()
@@ -20,16 +27,54 @@ export default function IdeaDetailPage() {
   async function getUser() {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
+    if (user) {
+      const { data } = await supabase.from('likes')
+        .select('id').eq('user_id', user.id).eq('idea_id', params.id).single()
+      setLiked(!!data)
+    }
   }
 
   async function getIdea() {
     const { data } = await supabase
       .from('ideas')
-      .select('*, profiles(id, username, full_name, bio, is_company, company_name)')
+      .select('*, profiles(id, username, full_name, bio, is_company, company_name, avatar_url)')
       .eq('id', params.id)
       .single()
     setIdea(data)
+
+    const { count } = await supabase.from('likes')
+      .select('*', { count: 'exact', head: true }).eq('idea_id', params.id)
+    setLikeCount(count || 0)
     setLoading(false)
+  }
+
+  async function toggleLike() {
+    if (!user) { router.push('/login'); return }
+    if (liked) {
+      await supabase.from('likes').delete().eq('user_id', user.id).eq('idea_id', params.id)
+      setLiked(false)
+      setLikeCount(prev => prev - 1)
+    } else {
+      await supabase.from('likes').insert({ user_id: user.id, idea_id: params.id })
+      setLiked(true)
+      setLikeCount(prev => prev + 1)
+    }
+  }
+
+  async function sendMessage() {
+    if (!messageContent.trim()) return
+    setSending(true)
+    const { error } = await supabase.from('messages').insert({
+      sender_id: user.id,
+      receiver_id: idea.profiles.id,
+      idea_id: params.id,
+      content: messageContent.trim()
+    })
+    if (error) { alert('エラー: ' + error.message); setSending(false); return }
+    setSending(false)
+    setSent(true)
+    setMessageContent('')
+    setTimeout(() => { setShowMessage(false); setSent(false) }, 2000)
   }
 
   async function handleDelete() {
@@ -79,18 +124,10 @@ export default function IdeaDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
-      <nav style={{
-        background: '#fff', borderBottom: '0.5px solid rgba(0,0,0,0.1)',
-        padding: '0 1.5rem', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px', position: 'sticky', top: 0, zIndex: 10
-      }}>
-        <Link href="/" style={{ fontSize: '20px', fontWeight: '700', letterSpacing: '-0.5px', textDecoration: 'none', color: 'inherit' }}>
-          IDEA<span style={{ color: '#1D9E75' }}>VAULT</span>
-        </Link>
-        <Link href="/" style={{ fontSize: '13px', color: '#6b6b67', textDecoration: 'none' }}>← フィードに戻る</Link>
-      </nav>
+      <Navbar />
 
       <div style={{ maxWidth: '760px', margin: '0 auto', padding: '2rem 1.25rem' }}>
+
         {/* ヘッダー */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '1rem' }}>
@@ -103,37 +140,63 @@ export default function IdeaDetailPage() {
           </div>
 
           {/* 投稿者 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '0.5px solid rgba(0,0,0,0.08)' }}>
+          <div
+            onClick={() => router.push(`/profile/${profile?.id}`)}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', cursor: 'pointer' }}
+          >
             <div style={{
-              width: '32px', height: '32px', borderRadius: '50%',
+              width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
               background: '#E1F5EE', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: '13px', fontWeight: '600', color: '#0F6E56'
-            }}>{name[0]}</div>
+              justifyContent: 'center', fontSize: '16px', fontWeight: '600', color: '#0F6E56',
+              overflow: 'hidden'
+            }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : name[0]
+              }
+            </div>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>{name}</div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a18' }}>{name}</div>
               {profile?.bio && <div style={{ fontSize: '12px', color: '#6b6b67' }}>{profile.bio}</div>}
             </div>
             {idea.category && (
-              <span style={{ marginLeft: 'auto', fontSize: '11px', background: '#f0eeea', padding: '3px 9px', borderRadius: '20px', color: '#6b6b67' }}>{idea.category}</span>
+              <span style={{ marginLeft: 'auto', fontSize: '11px', background: '#f0eeea', padding: '3px 9px', borderRadius: '20px', color: '#6b6b67', flexShrink: 0 }}>{idea.category}</span>
             )}
           </div>
 
-          {/* アクション */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {/* アクションボタン */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* いいねボタン */}
+            <button onClick={toggleLike} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+              border: `1px solid ${liked ? '#e74c3c' : 'rgba(0,0,0,0.15)'}`,
+              background: liked ? '#fff0f0' : '#fff',
+              color: liked ? '#e74c3c' : '#6b6b67',
+              cursor: 'pointer', transition: 'all 0.15s'
+            }}>
+              {liked ? '❤️' : '🤍'} {likeCount}
+            </button>
+
+            {/* メッセージボタン（自分以外） */}
             {user && !isOwner && (
-              <Link href={`/messages?to=${profile?.id}&idea=${idea.id}`} style={{
+              <button onClick={() => setShowMessage(true)} style={{
                 background: '#1D9E75', color: '#fff', padding: '8px 20px',
-                borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none'
-              }}>メッセージを送る</Link>
+                borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+                border: 'none', cursor: 'pointer'
+              }}>✉️ メッセージを送る</button>
             )}
+
+            {/* 編集・削除（自分のみ） */}
             {isOwner && (
               <>
-                <Link href={`/ideas/${idea.id}/edit`} style={{
-                  padding: '8px 16px', borderRadius: '8px', fontSize: '13px',
-                  border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67', textDecoration: 'none'
-                }}>編集</Link>
+                <div onClick={() => router.push(`/ideas/${idea.id}/edit`)} style={{
+                  padding: '8px 16px', borderRadius: '20px', fontSize: '13px',
+                  border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67',
+                  cursor: 'pointer'
+                }}>編集</div>
                 <button onClick={handleDelete} style={{
-                  padding: '8px 16px', borderRadius: '8px', fontSize: '13px',
+                  padding: '8px 16px', borderRadius: '20px', fontSize: '13px',
                   border: '0.5px solid rgba(0,0,0,0.15)', color: '#c04020',
                   background: 'none', cursor: 'pointer'
                 }}>削除</button>
@@ -141,6 +204,49 @@ export default function IdeaDetailPage() {
             )}
           </div>
         </div>
+
+        {/* メッセージ送信パネル */}
+        {showMessage && (
+          <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #1D9E75', padding: '1.25rem', marginBottom: '12px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18', marginBottom: '10px' }}>
+              {name}さんにメッセージを送る
+            </div>
+            {sent ? (
+              <div style={{ background: '#d8f2ea', color: '#0d6e50', padding: '12px', borderRadius: '10px', fontSize: '14px', textAlign: 'center', fontWeight: '600' }}>
+                ✓ 送信しました！
+              </div>
+            ) : (
+              <>
+                <textarea
+                  value={messageContent}
+                  onChange={e => setMessageContent(e.target.value)}
+                  placeholder={`${name}さんへのメッセージを入力してください...`}
+                  rows={4}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: '10px',
+                    border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px',
+                    outline: 'none', resize: 'vertical', lineHeight: '1.7',
+                    fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '10px'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button onClick={() => { setShowMessage(false); setMessageContent('') }} style={{
+                    padding: '8px 18px', borderRadius: '20px', fontSize: '13px',
+                    border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67',
+                    background: 'none', cursor: 'pointer'
+                  }}>キャンセル</button>
+                  <button onClick={sendMessage} disabled={sending || !messageContent.trim()} style={{
+                    padding: '8px 22px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+                    background: '#1D9E75', color: '#fff', border: 'none',
+                    cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1
+                  }}>
+                    {sending ? '送信中...' : '送信する'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* 詳細セクション */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '0.5rem 1.5rem 1rem' }}>
