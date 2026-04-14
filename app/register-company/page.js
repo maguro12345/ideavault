@@ -9,6 +9,7 @@ export default function RegisterCompanyPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [agreed, setAgreed] = useState(false)
   const [auth, setAuth] = useState({ email: '', password: '' })
   const [form, setForm] = useState({
     company_name: '',
@@ -36,6 +37,7 @@ export default function RegisterCompanyPage() {
 
   async function handleAuthSubmit(e) {
     e.preventDefault()
+    if (!agreed) { setError('利用規約・プライバシーポリシーに同意してください'); return }
     setLoading(true)
     setError('')
     await supabase.auth.signOut()
@@ -96,7 +98,7 @@ export default function RegisterCompanyPage() {
         {/* ログイン・登録タブ */}
         <div style={{ display: 'flex', background: '#f5f4f0', borderRadius: '10px', padding: '3px', marginBottom: '1.5rem' }}>
           {[{ key: 'login', label: 'ログイン' }, { key: 'register', label: '新規登録' }].map(t => (
-            <button key={t.key} onClick={() => { setMode(t.key); setError(''); setStep(1) }} style={{
+            <button key={t.key} onClick={() => { setMode(t.key); setError(''); setStep(1); setAgreed(false) }} style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
               border: 'none', cursor: 'pointer', transition: 'all 0.15s',
               background: mode === t.key ? '#1a3a5c' : 'none',
@@ -139,16 +141,35 @@ export default function RegisterCompanyPage() {
               <input type="email" value={auth.email} onChange={e => setAuth({ ...auth, email: e.target.value })}
                 placeholder="company@example.com" required style={inputStyle} />
             </div>
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: '1rem' }}>
               <label style={labelStyle}>パスワード <span style={{ color: '#c04020' }}>*</span></label>
               <input type="password" value={auth.password} onChange={e => setAuth({ ...auth, password: e.target.value })}
                 placeholder="8文字以上" required style={inputStyle} />
             </div>
+
+            {/* 利用規約同意チェックボックス */}
+            <div style={{ marginBottom: '1.25rem', padding: '12px', background: '#f5f4f0', borderRadius: '10px' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={e => setAgreed(e.target.checked)}
+                  style={{ marginTop: '2px', flexShrink: 0, width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b6b67', lineHeight: '1.7' }}>
+                  <Link href="/terms" target="_blank" style={{ color: '#1D9E75', textDecoration: 'none', fontWeight: '600' }}>利用規約</Link>
+                  {' '}および{' '}
+                  <Link href="/privacy" target="_blank" style={{ color: '#1D9E75', textDecoration: 'none', fontWeight: '600' }}>プライバシーポリシー</Link>
+                  {' '}を読み、同意します
+                </span>
+              </label>
+            </div>
+
             {error && <div style={{ background: '#fdeae4', color: '#c04020', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', marginBottom: '1rem' }}>{error}</div>}
-            <button type="submit" disabled={loading} style={{
+            <button type="submit" disabled={loading || !agreed} style={{
               width: '100%', padding: '11px', background: '#1a3a5c', color: '#fff',
               border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-              cursor: 'pointer', opacity: loading ? 0.7 : 1
+              cursor: !agreed ? 'not-allowed' : 'pointer', opacity: loading || !agreed ? 0.6 : 1
             }}>{loading ? '処理中...' : '次へ →'}</button>
           </form>
         )}
@@ -200,7 +221,7 @@ export default function RegisterCompanyPage() {
           </form>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '13px', color: '#6b6b67' }}>
+        <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '13px', color: '#6b6b67' }}>
           個人アカウントの方は
           <Link href="/login" style={{ color: '#1D9E75', textDecoration: 'none', fontWeight: '600', marginLeft: '4px' }}>こちら</Link>
         </div>
