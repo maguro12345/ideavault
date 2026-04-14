@@ -27,7 +27,12 @@ export default function LoginPage() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setError('メールアドレスかパスワードが違います'); setLoading(false); return }
-      router.push('/')
+      const { data: profile } = await supabase.from('profiles').select('is_company, full_name, username').eq('id', (await supabase.auth.getUser()).data.user.id).single()
+      if (profile?.is_company) {
+        router.push('/company/dashboard')
+      } else {
+        router.push('/onboarding')
+      }
       router.refresh()
     }
     setLoading(false)
