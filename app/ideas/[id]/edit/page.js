@@ -36,7 +36,7 @@ export default function EditIdeaPage() {
     setForm({
       title:    idea.title || '',
       status:   idea.status || 'アイデア',
-      category: idea.category || '',
+      category: idea.category ? idea.category.split(', ').filter(Boolean) : [],
       concept:  idea.concept || '',
       features: idea.features || '',
       target:   idea.target || '',
@@ -59,7 +59,7 @@ export default function EditIdeaPage() {
     setSaving(true)
 
     const { error } = await supabase.from('ideas')
-      .update({ ...form, updated_at: new Date().toISOString() })
+      .update({ ...form, category: Array.isArray(form.category) ? form.category.join(', ') : form.category, updated_at: new Date().toISOString() })
       .eq('id', params.id)
 
     if (error) { alert('エラー: ' + error.message); setSaving(false); return }
@@ -122,14 +122,33 @@ export default function EditIdeaPage() {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>カテゴリ</label>
-                <select
-                  value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', background: '#fff', boxSizing: 'border-box' }}
-                >
-                  <option value="">カテゴリを選択...</option>
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '8px' }}>
+                  カテゴリ <span style={{ fontWeight: '400', color: '#a0a09c' }}>（複数選択可）</span>
+                </label>
+                {form.category.length > 0 && (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                    {form.category.map(c => (
+                      <span key={c} style={{ fontSize: '12px', background: '#E1F5EE', color: '#0d6e50', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {c}
+                        <button type="button" onClick={() => setForm(prev => ({ ...prev, category: prev.category.filter(x => x !== c) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0d6e50', fontSize: '12px', padding: '0', lineHeight: 1 }}>✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '160px', overflowY: 'auto', padding: '4px' }}>
+                  {categories.map(c => (
+                    <button key={c} type="button" onClick={() => setForm(prev => ({
+                      ...prev,
+                      category: prev.category.includes(c) ? prev.category.filter(x => x !== c) : [...prev.category, c]
+                    }))} style={{
+                      padding: '5px 12px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
+                      border: `1px solid ${form.category.includes(c) ? '#1D9E75' : 'rgba(0,0,0,0.15)'}`,
+                      background: form.category.includes(c) ? '#E1F5EE' : '#fff',
+                      color: form.category.includes(c) ? '#0d6e50' : '#6b6b67',
+                      fontWeight: form.category.includes(c) ? '600' : '400'
+                    }}>{c}</button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
