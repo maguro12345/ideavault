@@ -137,7 +137,6 @@ function MessagesContent() {
     if (error) { alert('アップロードエラー: ' + error.message); setUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('chat-files').getPublicUrl(path)
     const fileType = file.type.startsWith('image/') ? 'image' : file.type === 'application/pdf' ? 'pdf' : 'file'
-
     if (selectedDM) {
       const { data } = await supabase.from('messages').insert({
         sender_id: user.id, receiver_id: selectedDM,
@@ -163,9 +162,7 @@ function MessagesContent() {
     if (!pollQuestion.trim()) { alert('質問を入力してください'); return }
     if (validOptions.length < 2) { alert('選択肢を2つ以上入力してください'); return }
     await supabase.from('polls').insert({ group_id: selectedGroup, created_by: user.id, question: pollQuestion, options: validOptions })
-    setPollQuestion('')
-    setPollOptions(['', ''])
-    setShowPoll(false)
+    setPollQuestion(''); setPollOptions(['', '']); setShowPoll(false)
     await getPolls(selectedGroup)
   }
 
@@ -201,10 +198,10 @@ function MessagesContent() {
   function getGroupName(id) { return groups.find(g => g.id === id)?.name || 'グループ' }
   function formatTime(ts) { const d = new Date(ts); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` }
 
-  function Avatar({ profile, size = 36 }) {
+  function Avatar({ profile, size = 36, onClick }) {
     const n = profile?.full_name || profile?.username || '?'
     return (
-      <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.35, fontWeight: '600', color: '#0F6E56', overflow: 'hidden' }}>
+      <div onClick={onClick} style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.35, fontWeight: '600', color: '#0F6E56', overflow: 'hidden', cursor: onClick ? 'pointer' : 'default' }}>
         {profile?.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : n[0]}
       </div>
     )
@@ -233,7 +230,6 @@ function MessagesContent() {
     const totalVotes = Object.values(voteCounts).reduce((a, b) => a + b, 0)
     const myVote = myVotes[poll.id]
     const hasVoted = myVote !== undefined
-
     return (
       <div style={{ background: '#f0eeea', borderRadius: '12px', padding: '14px', margin: '8px 0' }}>
         <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a18', marginBottom: '10px' }}>📊 {poll.question}</div>
@@ -244,9 +240,7 @@ function MessagesContent() {
           return (
             <div key={i} onClick={() => vote(poll.id, i)} style={{ marginBottom: '8px', cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                <span style={{ fontSize: '12px', fontWeight: isMyVote ? '700' : '400', color: isMyVote ? '#1D9E75' : '#1a1a18' }}>
-                  {isMyVote ? '✓ ' : ''}{opt}
-                </span>
+                <span style={{ fontSize: '12px', fontWeight: isMyVote ? '700' : '400', color: isMyVote ? '#1D9E75' : '#1a1a18' }}>{isMyVote ? '✓ ' : ''}{opt}</span>
                 {hasVoted && <span style={{ fontSize: '11px', color: '#6b6b67' }}>{pct}% ({count}票)</span>}
               </div>
               <div style={{ height: '6px', background: '#d0cec8', borderRadius: '3px', overflow: 'hidden' }}>
@@ -255,9 +249,7 @@ function MessagesContent() {
             </div>
           )
         })}
-        <div style={{ fontSize: '11px', color: '#a0a09c', marginTop: '6px' }}>
-          {hasVoted ? `合計 ${totalVotes}票` : 'タップして投票'}
-        </div>
+        <div style={{ fontSize: '11px', color: '#a0a09c', marginTop: '6px' }}>{hasVoted ? `合計 ${totalVotes}票` : 'タップして投票'}</div>
       </div>
     )
   }
@@ -287,9 +279,12 @@ function MessagesContent() {
                 {threads.length === 0 ? (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>まだメッセージがありません</div>
                 ) : threads.map(id => (
-                  <div key={id} onClick={() => { setSelectedDM(id); setSelectedGroup(null) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', cursor: 'pointer', background: selectedDM === id ? '#f0eeea' : '#fff' }}>
-                    <Avatar profile={profiles[id]} />
-                    <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a18' }}>{getName(id)}</div>
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', background: selectedDM === id ? '#f0eeea' : '#fff' }}>
+                    <Avatar
+                      profile={profiles[id]}
+                      onClick={() => router.push(`/profile/${id}`)}
+                    />
+                    <div onClick={() => { setSelectedDM(id); setSelectedGroup(null) }} style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a18', flex: 1, cursor: 'pointer' }}>{getName(id)}</div>
                   </div>
                 ))}
               </div>
@@ -318,7 +313,10 @@ function MessagesContent() {
               <>
                 <div style={{ padding: '12px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {selectedDM ? (
-                    <><Avatar profile={profiles[selectedDM]} size={28} /><div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>{getName(selectedDM)}</div></>
+                    <>
+                      <Avatar profile={profiles[selectedDM]} size={28} onClick={() => router.push(`/profile/${selectedDM}`)} />
+                      <div onClick={() => router.push(`/profile/${selectedDM}`)} style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', cursor: 'pointer' }}>{getName(selectedDM)}</div>
+                    </>
                   ) : (
                     <><div style={{ fontSize: '18px' }}>👥</div><div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>{getGroupName(selectedGroup)}</div></>
                   )}
@@ -335,7 +333,7 @@ function MessagesContent() {
                     return (
                       <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
                         {selectedGroup && !isMe && senderProfile && (
-                          <div style={{ fontSize: '11px', color: '#a0a09c', marginBottom: '3px', paddingLeft: '4px' }}>{senderProfile.full_name || senderProfile.username}</div>
+                          <div onClick={() => router.push(`/profile/${senderProfile.id}`)} style={{ fontSize: '11px', color: '#a0a09c', marginBottom: '3px', paddingLeft: '4px', cursor: 'pointer' }}>{senderProfile.full_name || senderProfile.username}</div>
                         )}
                         <div style={{ maxWidth: '75%', padding: m.file_type === 'image' ? '4px' : '8px 12px', borderRadius: isMe ? '12px 12px 2px 12px' : '2px 12px 12px 12px', background: isMe ? '#1D9E75' : '#f0eeea', color: isMe ? '#fff' : '#1a1a18' }}>
                           <FileMessage msg={m} />
@@ -347,7 +345,6 @@ function MessagesContent() {
                   <div ref={bottomRef} />
                 </div>
 
-                {/* 投票作成パネル */}
                 {showPoll && selectedGroup && (
                   <div style={{ padding: '12px 14px', borderTop: '0.5px solid rgba(0,0,0,0.08)', background: '#f8f7f4' }}>
                     <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '8px', color: '#1a1a18' }}>📊 投票を作成</div>
@@ -389,7 +386,6 @@ function MessagesContent() {
         </div>
       </div>
 
-      {/* グループ作成モーダル */}
       {showNewGroup && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 100 }} onClick={e => e.target === e.currentTarget && setShowNewGroup(false)}>
           <div style={{ background: '#fff', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '420px' }}>

@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '../lib/supabase'
 import { useRouter, usePathname } from 'next/navigation'
@@ -6,7 +6,8 @@ import Link from 'next/link'
 
 export default function CompanyNavbar() {
   const [profile, setProfile] = useState(null)
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadBiz, setUnreadBiz] = useState(0)
+  const [unreadDM, setUnreadDM] = useState(0)
   const supabase = createClient()
   const router = useRouter()
   const pathname = usePathname()
@@ -18,11 +19,11 @@ export default function CompanyNavbar() {
     if (!user) return
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     setProfile(data)
-    await getUnreadCount(user.id)
-    subscribeToNotifications(user.id)
+    await getBizUnread(user.id)
+    await getDMUnread(user.id)
   }
 
-  async function getUnreadCount(userId) {
+  async function getBizUnread(userId) {
     const { data: scouts } = await supabase
       .from('scouts').select('id').eq('from_company_id', userId).eq('status', 'accepted')
     if (!scouts || scouts.length === 0) return
@@ -31,15 +32,14 @@ export default function CompanyNavbar() {
       .in('scout_id', scouts.map(s => s.id))
       .eq('is_read', false)
       .neq('sender_id', userId)
-    setUnreadCount(count || 0)
+    setUnreadBiz(count || 0)
   }
 
-  function subscribeToNotifications(userId) {
-    supabase.channel('biz_notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'business_messages' }, () => {
-        getUnreadCount(userId)
-      })
-      .subscribe()
+  async function getDMUnread(userId) {
+    const { count } = await supabase.from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId).eq('is_read', false).eq('type', 'message')
+    setUnreadDM(count || 0)
   }
 
   async function handleLogout() {
@@ -62,19 +62,19 @@ export default function CompanyNavbar() {
       justifyContent: 'space-between', height: '56px',
       position: 'sticky', top: 0, zIndex: 10
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <Link href="/company/dashboard" style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.5px', textDecoration: 'none', color: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <Link href="/company/dashboard" style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.5px', textDecoration: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
           IDEA<span style={{ color: '#5DCAA5' }}>VAULT</span>
-          <span style={{ fontSize: '10px', background: '#5DCAA5', color: '#1a3a5c', padding: '2px 7px', borderRadius: '4px', marginLeft: '8px', fontWeight: '700', letterSpacing: '0.5px' }}>法人</span>
+          <span style={{ fontSize: '10px', background: '#5DCAA5', color: '#1a3a5c', padding: '2px 7px', borderRadius: '4px', fontWeight: '700', letterSpacing: '0.5px' }}>法人</span>
         </Link>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '2px' }}>
           {NAV.map(n => (
             <Link key={n.href} href={n.href} style={{
               display: 'flex', alignItems: 'center', gap: '5px',
               padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
               textDecoration: 'none', transition: 'background 0.15s',
-              background: pathname === n.href ? 'rgba(255,255,255,0.15)' : 'none',
-              color: pathname === n.href ? '#fff' : 'rgba(255,255,255,0.7)'
+              background: pathname?.startsWith(n.href) ? 'rgba(255,255,255,0.15)' : 'none',
+              color: pathname?.startsWith(n.href) ? '#fff' : 'rgba(255,255,255,0.7)'
             }}>
               <span style={{ fontSize: '14px' }}>{n.icon}</span>{n.label}
             </Link>
@@ -82,30 +82,31 @@ export default function CompanyNavbar() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* ビジネスチャット（スカウト承諾後） */}
         <div style={{ position: 'relative' }}>
-          <Link href="/company/scouts" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>💬</Link>
-          {unreadCount > 0 && (
-            <div style={{
-              position: 'absolute', top: '-4px', right: '-4px',
-              width: '16px', height: '16px', borderRadius: '50%',
-              background: '#e74c3c', color: '#fff', fontSize: '10px', fontWeight: '700',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>{unreadCount > 9 ? '9+' : unreadCount}</div>
+          <Link href="/company/scouts" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '6px 8px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)' }} title="ビジネスチャット">💼</Link>
+          {unreadBiz > 0 && (
+            <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '16px', height: '16px', borderRadius: '50%', background: '#e74c3c', color: '#fff', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadBiz > 9 ? '9+' : unreadBiz}</div>
           )}
         </div>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px'
-        }}>
-          <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#5DCAA5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', color: '#1a3a5c' }}>🏢</div>
+
+        {/* 通常DM・グループ */}
+        <div style={{ position: 'relative' }}>
+          <Link href="/messages" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '6px 8px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)' }} title="メッセージ">💬</Link>
+          {unreadDM > 0 && (
+            <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '16px', height: '16px', borderRadius: '50%', background: '#e74c3c', color: '#fff', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadDM > 9 ? '9+' : unreadDM}</div>
+          )}
+        </div>
+
+        <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.2)' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px' }}>
+          <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#5DCAA5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🏢</div>
           <span style={{ fontSize: '12px', color: '#fff', fontWeight: '500' }}>{name}</span>
         </div>
         <Link href="/company/profile" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>設定</Link>
-        <button onClick={handleLogout} style={{
-          background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)',
-          padding: '5px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit'
-        }}>ログアウト</button>
+        <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', padding: '5px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>ログアウト</button>
       </div>
     </nav>
   )
