@@ -20,6 +20,7 @@ export default function Home() {
   useEffect(() => {
     getUser()
     getIdeas()
+    fetchCategories()
   }, [])
 
   async function getUser() {
@@ -34,16 +35,13 @@ export default function Home() {
       .order('created_at', { ascending: false })
     if (data) {
       setIdeas(data)
-      const cats = [...new Set(data.map(i => i.category).filter(Boolean))]
-      setCategories(cats)
     }
     setLoading(false)
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    setUser(null)
-    router.refresh()
+  async function fetchCategories() {
+    const { data } = await supabase.from('categories').select('name').order('sort_order')
+    setCategories(data?.map(c => c.name) || [])
   }
 
   const filtered = ideas.filter(i => {
@@ -72,7 +70,7 @@ export default function Home() {
     '一時停止':  { bg: '#eeecea', color: '#5a5a56' },
   }
 
-  const IdeaCard = ({ idea, big = false }) => {
+  function IdeaCard({ idea, big = false }) {
     const badge = BADGE[idea.status] || BADGE['アイデア']
     const profile = idea.profiles
     const name = profile?.is_company ? profile.company_name : profile?.full_name || profile?.username || '名無し'
@@ -113,7 +111,7 @@ export default function Home() {
             }}>{idea.revenue}</div>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', flexWrap: 'wrap', gap: '6px' }}>
           <div
             onClick={e => { e.stopPropagation(); router.push(`/profile/${profile?.id}`) }}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
@@ -141,8 +139,7 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
-      {/* ナビ */}
-       <Navbar />
+      <Navbar />
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1.25rem' }}>
 
@@ -170,11 +167,11 @@ export default function Home() {
                   background: '#1D9E75', color: '#fff', padding: '10px 24px',
                   borderRadius: '10px', fontSize: '14px', fontWeight: '600', textDecoration: 'none'
                 }}>無料でアカウント作成</Link>
-                <Link href="#feed" style={{
+                <a href="#feed" style={{
                   background: 'none', color: '#1a1a18', padding: '10px 24px',
                   borderRadius: '10px', fontSize: '14px', fontWeight: '600', textDecoration: 'none',
                   border: '0.5px solid rgba(0,0,0,0.15)'
-                }}>アイデアを見る</Link>
+                }}>アイデアを見る</a>
               </div>
             ) : (
               <Link href="/ideas/create" style={{
@@ -219,7 +216,6 @@ export default function Home() {
         <div id="feed">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <span style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a18' }}>すべての企画</span>
-            {/* 並び替え */}
             <div style={{ display: 'flex', gap: '6px' }}>
               {[{ key: 'new', label: '新着' }, { key: 'popular', label: '人気' }].map(s => (
                 <button key={s.key} onClick={() => setSort(s.key)} style={{
@@ -273,6 +269,16 @@ export default function Home() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* フッター */}
+      <div style={{ borderTop: '0.5px solid rgba(0,0,0,0.08)', padding: '2rem 1.25rem', marginTop: '2rem', textAlign: 'center', background: '#fff' }}>
+        <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '10px' }}>
+          <Link href="/terms" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>利用規約</Link>
+          <Link href="/privacy" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>プライバシーポリシー</Link>
+          <Link href="/reset-password" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>パスワードリセット</Link>
+        </div>
+        <div style={{ fontSize: '11px', color: '#a0a09c' }}>© 2025 IdeaVault. All rights reserved.</div>
       </div>
     </div>
   )
