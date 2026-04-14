@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -85,7 +85,7 @@ export default function CompanyScoutsPage() {
           return (
             <div key={scout.id} style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.08)', padding: '1.25rem', marginBottom: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => router.push(`/profile/${target?.id}`)}>
                   <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '600', color: '#0F6E56', overflow: 'hidden', flexShrink: 0 }}>
                     {target?.avatar_url ? <img src={target.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : tName[0]}
                   </div>
@@ -112,10 +112,10 @@ export default function CompanyScoutsPage() {
               </div>
 
               {scout.status === 'accepted' && (
-                <button onClick={() => router.push(`/company/chat/${scout.id}`)} style={{
+                <button onClick={() => router.push(`/messages?to=${target?.id}`)} style={{
                   width: '100%', padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '700',
                   background: '#1a3a5c', color: '#fff', border: 'none', cursor: 'pointer'
-                }}>💬 ビジネスチャットを開く</button>
+                }}>💬 メッセージを開く</button>
               )}
               {scout.status === 'pending' && (
                 <div style={{ textAlign: 'center', fontSize: '12px', color: '#a0a09c', padding: '8px' }}>相手の返答を待っています...</div>
