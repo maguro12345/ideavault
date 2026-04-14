@@ -58,6 +58,14 @@ export default function IdeaDetailPage() {
       await supabase.from('likes').insert({ user_id: user.id, idea_id: params.id })
       setLiked(true)
       setLikeCount(prev => prev + 1)
+      if (user.id !== idea.profiles.id) {
+        await supabase.from('notifications').insert({
+          user_id: idea.profiles.id,
+          from_id: user.id,
+          type: 'like',
+          idea_id: params.id
+        })
+      }
     }
   }
 
@@ -179,12 +187,39 @@ export default function IdeaDetailPage() {
             </button>
 
             {/* メッセージボタン（自分以外） */}
+            {/* シェアボタン（全員に表示） */}
+            <button onClick={() => {
+              const url = window.location.href
+              const text = `${idea.title} - IdeaVault`
+              window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank')
+            }} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+              border: '1px solid rgba(0,0,0,0.15)', background: '#fff', color: '#1a1a18', cursor: 'pointer'
+            }}>𝕏 シェア</button>
+
+            <button onClick={() => {
+              navigator.clipboard.writeText(window.location.href)
+              alert('URLをコピーしました！')
+            }} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+              border: '1px solid rgba(0,0,0,0.15)', background: '#fff', color: '#1a1a18', cursor: 'pointer'
+            }}>🔗 URLをコピー</button>
+
             {user && !isOwner && (
               <button onClick={() => setShowMessage(true)} style={{
                 background: '#1D9E75', color: '#fff', padding: '8px 20px',
                 borderRadius: '20px', fontSize: '13px', fontWeight: '600',
                 border: 'none', cursor: 'pointer'
               }}>✉️ メッセージを送る</button>
+            )}
+            {user && !isOwner && profile?.is_company === false && (
+              <Link href={`/scout?idea=${params.id}`} style={{
+                display: 'inline-block', background: '#1a3a5c', color: '#fff',
+                padding: '8px 20px', borderRadius: '20px', fontSize: '13px',
+                fontWeight: '600', textDecoration: 'none'
+              }}>🏢 スカウトを送る</Link>
             )}
 
             {/* 編集・削除（自分のみ） */}

@@ -81,7 +81,7 @@ export default function Home() {
           background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)',
           borderRadius: '14px', padding: big ? '1.5rem' : '1.15rem 1.3rem',
           display: 'flex', flexDirection: 'column', gap: '10px',
-          cursor: 'pointer', transition: 'box-shadow 0.15s', height: '100%'
+          cursor: 'pointer', transition: 'box-shadow 0.15s'
         }}
         onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'}
         onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
@@ -107,8 +107,9 @@ export default function Home() {
             <div style={{
               fontSize: '12px', color: '#1a1a18', lineHeight: '1.55',
               display: '-webkit-box', WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical', overflow: 'hidden'
-            }}>{idea.revenue}</div>
+              WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-all'
+            }}>{idea.revenue.split('\n')[0]}</div>
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', flexWrap: 'wrap', gap: '6px' }}>
@@ -206,7 +207,7 @@ export default function Home() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <span style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a18' }}>✨ 注目のアイデア</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px', alignItems: 'start' }}>
               {featured.map(idea => <IdeaCard key={idea.id} idea={idea} big />)}
             </div>
           </div>
