@@ -9,6 +9,7 @@ export default function EditIdeaPage() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [categories, setCategories] = useState([])
   const [form, setForm] = useState({
     title: '', status: 'アイデア', category: '',
     concept: '', features: '', target: '',
@@ -21,6 +22,7 @@ export default function EditIdeaPage() {
   useEffect(() => { init() }, [])
 
   async function init() {
+    await fetchCategories()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
     setUser(user)
@@ -44,6 +46,11 @@ export default function EditIdeaPage() {
       memo:     idea.memo || ''
     })
     setLoading(false)
+  }
+
+  async function fetchCategories() {
+    const { data } = await supabase.from('categories').select('name').order('sort_order')
+    setCategories(data?.map(c => c.name) || [])
   }
 
   async function handleSubmit(e) {
@@ -116,11 +123,13 @@ export default function EditIdeaPage() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>カテゴリ</label>
-                <input
+                <select
                   value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
-                  placeholder="例：SaaS、フードテック…"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-                />
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', background: '#fff', boxSizing: 'border-box' }}
+                >
+                  <option value="">カテゴリを選択...</option>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
             </div>
           </div>
