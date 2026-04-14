@@ -101,7 +101,7 @@ export default function CompanyNavbar() {
           <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#5DCAA5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', color: '#1a3a5c' }}>🏢</div>
           <span style={{ fontSize: '12px', color: '#fff', fontWeight: '500' }}>{name}</span>
         </div>
-        <Link href="/mypage" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>設定</Link>
+        <Link href="/company/profile" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>設定</Link>
         <button onClick={handleLogout} style={{
           background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)',
           padding: '5px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit'
