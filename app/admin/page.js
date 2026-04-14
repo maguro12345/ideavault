@@ -1,8 +1,10 @@
- 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Navbar from '../../components/Navbar'
+
+const IS_PRODUCTION = process.env.NEXT_PUBLIC_ENV === 'production'
 
 export default function AdminPage() {
   const [categories, setCategories] = useState([])
@@ -12,7 +14,10 @@ export default function AdminPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  useEffect(() => { init() }, [])
+  useEffect(() => {
+    if (IS_PRODUCTION) { router.push('/'); return }
+    init()
+  }, [])
 
   async function init() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -61,6 +66,8 @@ export default function AdminPage() {
     await fetchCategories()
   }
 
+  if (IS_PRODUCTION) return null
+
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f4f0' }}>
       <div style={{ color: '#6b6b67' }}>読み込み中...</div>
@@ -76,7 +83,6 @@ export default function AdminPage() {
           ここで追加・削除・並び替えができます。変更は即座に投稿フォームに反映されます。
         </div>
 
-        {/* 追加フォーム */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem', marginBottom: '1rem' }}>
           <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a18', marginBottom: '10px' }}>新しいカテゴリを追加</div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -95,7 +101,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* カテゴリ一覧 */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a18' }}>カテゴリ一覧</div>
