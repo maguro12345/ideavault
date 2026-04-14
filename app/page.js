@@ -30,7 +30,7 @@ export default function Home() {
   async function getIdeas() {
     const { data } = await supabase
       .from('ideas')
-      .select('*, profiles(id, username, full_name, is_company, company_name)')
+      .select('*, profiles(id, username, full_name, is_company, company_name, avatar_url)')
       .order('created_at', { ascending: false })
     if (data) {
       setIdeas(data)
@@ -121,8 +121,14 @@ export default function Home() {
             <div style={{
               width: '22px', height: '22px', borderRadius: '50%',
               background: '#E1F5EE', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: '10px', fontWeight: '600', color: '#0F6E56'
-            }}>{name[0]}</div>
+              justifyContent: 'center', fontSize: '10px', fontWeight: '600', color: '#0F6E56',
+              overflow: 'hidden', flexShrink: 0
+            }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : name[0]
+              }
+            </div>
             <span style={{ fontSize: '11px', color: '#6b6b67' }}>{name}</span>
           </div>
           {idea.category && (
