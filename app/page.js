@@ -41,13 +41,15 @@ export default function Home() {
       if (user) {
         const { data: follows } = await supabase.from('follows').select('following_id').eq('follower_id', user.id)
         const followingIds = new Set(follows?.map(f => f.following_id) || [])
-        filtered = data.filter(idea => {
+         filtered = data.filter(idea => {
+          if (idea.is_draft) return false
+          if (idea.is_hidden && idea.user_id !== user.id) return false
           if (!idea.profiles?.is_private) return true
           if (idea.user_id === user.id) return true
           return followingIds.has(idea.user_id)
         })
       } else {
-        filtered = data.filter(idea => !idea.profiles?.is_private)
+        filtered = data.filter(idea => !idea.profiles?.is_private && !idea.is_hidden && !idea.is_draft)
       }
       setIdeas(filtered.map(i => ({ ...i, like_count: i.likes?.[0]?.count || 0 })))
     }

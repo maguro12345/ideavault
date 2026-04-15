@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '../../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
@@ -10,8 +10,12 @@ export default function EditIdeaPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [categories, setCategories] = useState([])
+  const [history, setHistory] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [isHidden, setIsHidden] = useState(false)
+  const [originalIdea, setOriginalIdea] = useState(null)
   const [form, setForm] = useState({
-    title: '', status: 'アイデア', category: '',
+    title: '', status: 'アイデア', category: [], visibility: 'public',
     concept: '', features: '', target: '',
     revenue: '', edge: '', launch: '', memo: ''
   })
@@ -27,24 +31,32 @@ export default function EditIdeaPage() {
     if (!user) { router.push('/login'); return }
     setUser(user)
 
-    const { data: idea } = await supabase
-      .from('ideas').select('*').eq('id', params.id).single()
-
+    const { data: idea } = await supabase.from('ideas').select('*').eq('id', params.id).single()
     if (!idea) { router.push('/'); return }
     if (idea.user_id !== user.id) { router.push('/'); return }
 
+    setOriginalIdea(idea)
+    setIsHidden(idea.is_hidden || false)
     setForm({
-      title:    idea.title || '',
-      status:   idea.status || 'アイデア',
+      title: idea.title || '',
+      status: idea.status || 'アイデア',
       category: idea.category ? idea.category.split(', ').filter(Boolean) : [],
-      concept:  idea.concept || '',
+      visibility: idea.visibility || 'public',
+      concept: idea.concept || '',
       features: idea.features || '',
-      target:   idea.target || '',
-      revenue:  idea.revenue || '',
-      edge:     idea.edge || '',
-      launch:   idea.launch || '',
-      memo:     idea.memo || ''
+      target: idea.target || '',
+      revenue: idea.revenue || '',
+      edge: idea.edge || '',
+      launch: idea.launch || '',
+      memo: idea.memo || ''
     })
+
+    // 編集履歴を取得
+    const { data: hist } = await supabase.from('idea_history')
+      .select('*').eq('idea_id', params.id)
+      .order('created_at', { ascending: false })
+    setHistory(hist || [])
+
     setLoading(false)
   }
 
@@ -58,27 +70,56 @@ export default function EditIdeaPage() {
     if (!form.title.trim()) { alert('サービス名を入力してください'); return }
     setSaving(true)
 
-    const { error } = await supabase.from('ideas')
-      .update({ ...form, category: Array.isArray(form.category) ? form.category.join(', ') : form.category, updated_at: new Date().toISOString() })
-      .eq('id', params.id)
+    // 編集前の内容を履歴に保存
+    if (originalIdea) {
+      await supabase.from('idea_history').insert({
+        idea_id: params.id,
+        user_id: user.id,
+        title: originalIdea.title,
+        concept: originalIdea.concept,
+        features: originalIdea.features,
+        target: originalIdea.target,
+        revenue: originalIdea.revenue,
+        edge: originalIdea.edge,
+        launch: originalIdea.launch,
+        memo: originalIdea.memo
+      })
+    }
+
+    const { error } = await supabase.from('ideas').update({
+      ...form,
+      category: Array.isArray(form.category) ? form.category.join(', ') : form.category,
+      is_hidden: isHidden,
+      updated_at: new Date().toISOString()
+    }).eq('id', params.id)
 
     if (error) { alert('エラー: ' + error.message); setSaving(false); return }
     router.push(`/ideas/${params.id}`)
   }
 
+  async function toggleHidden() {
+    const newHidden = !isHidden
+    setIsHidden(newHidden)
+    await supabase.from('ideas').update({ is_hidden: newHidden }).eq('id', params.id)
+    alert(newHidden ? '投稿を非公開にしました' : '投稿を公開しました')
+  }
+
+  function getDiff(old, current, label) {
+    if (!old || old === current) return null
+    return { label, old, current }
+  }
+
+  function formatDate(ts) {
+    const d = new Date(ts)
+    return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  }
+
   const field = (label, name, placeholder, rows = 4) => (
     <div style={{ marginBottom: '1rem' }}>
       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>{label}</label>
-      <textarea
-        name={name} value={form[name]} onChange={e => setForm({ ...form, [e.target.name]: e.target.value })}
+      <textarea name={name} value={form[name]} onChange={e => setForm({ ...form, [e.target.name]: e.target.value })}
         placeholder={placeholder} rows={rows}
-        style={{
-          width: '100%', padding: '9px 12px', borderRadius: '10px',
-          border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px',
-          outline: 'none', resize: 'vertical', lineHeight: '1.7',
-          fontFamily: 'inherit', boxSizing: 'border-box'
-        }}
-      />
+        style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', resize: 'vertical', lineHeight: '1.7', fontFamily: 'inherit', boxSizing: 'border-box' }} />
     </div>
   )
 
@@ -91,9 +132,25 @@ export default function EditIdeaPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
       <Navbar />
-
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '2rem 1.25rem' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '1.5rem', letterSpacing: '-0.5px' }}>企画を編集</h1>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '8px' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', letterSpacing: '-0.5px' }}>企画を編集</h1>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={toggleHidden} style={{
+              padding: '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600',
+              border: `1.5px solid ${isHidden ? '#BA7517' : 'rgba(0,0,0,0.15)'}`,
+              background: isHidden ? '#faeeda' : '#fff',
+              color: isHidden ? '#BA7517' : '#6b6b67', cursor: 'pointer'
+            }}>{isHidden ? '🔒 非公開中' : '👁 公開中'}</button>
+          </div>
+        </div>
+
+        {isHidden && (
+          <div style={{ background: '#faeeda', borderRadius: '12px', padding: '12px 16px', marginBottom: '1rem', fontSize: '13px', color: '#8a4f0a', fontWeight: '600' }}>
+            🔒 この投稿は現在非公開です。他のユーザーには表示されません。
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '1rem' }}>
@@ -103,57 +160,55 @@ export default function EditIdeaPage() {
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>
                 サービス名 <span style={{ color: '#c04020' }}>*</span>
               </label>
-              <input
-                value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                placeholder="例：AIレシピアプリ" required
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-              />
+              <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="例：AIレシピアプリ" required
+                style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>ステータス</label>
-                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{
-                  width: '100%', padding: '9px 12px', borderRadius: '10px',
-                  border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px',
-                  background: '#fff', boxSizing: 'border-box'
-                }}>
+                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', background: '#fff', boxSizing: 'border-box' }}>
                   {['アイデア','検討中','進行中','完成','一時停止'].map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '8px' }}>
-                  カテゴリ <span style={{ fontWeight: '400', color: '#a0a09c' }}>（複数選択可）</span>
-                </label>
-                {form.category.length > 0 && (
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                    {form.category.map(c => (
-                      <span key={c} style={{ fontSize: '12px', background: '#E1F5EE', color: '#0d6e50', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {c}
-                        <button type="button" onClick={() => setForm(prev => ({ ...prev, category: prev.category.filter(x => x !== c) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0d6e50', fontSize: '12px', padding: '0', lineHeight: 1 }}>✕</button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '160px', overflowY: 'auto', padding: '4px' }}>
-                  {categories.map(c => (
-                    <button key={c} type="button" onClick={() => setForm(prev => ({
-                      ...prev,
-                      category: prev.category.includes(c) ? prev.category.filter(x => x !== c) : [...prev.category, c]
-                    }))} style={{
-                      padding: '5px 12px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
-                      border: `1px solid ${form.category.includes(c) ? '#1D9E75' : 'rgba(0,0,0,0.15)'}`,
-                      background: form.category.includes(c) ? '#E1F5EE' : '#fff',
-                      color: form.category.includes(c) ? '#0d6e50' : '#6b6b67',
-                      fontWeight: form.category.includes(c) ? '600' : '400'
-                    }}>{c}</button>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>公開範囲</label>
+                <select value={form.visibility} onChange={e => setForm({ ...form, visibility: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', background: '#fff', boxSizing: 'border-box' }}>
+                  <option value="public">全公開</option>
+                  <option value="summary">概要のみ公開</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '8px' }}>
+                カテゴリ <span style={{ fontWeight: '400', color: '#a0a09c' }}>（複数選択可）</span>
+              </label>
+              {form.category.length > 0 && (
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  {form.category.map(c => (
+                    <span key={c} style={{ fontSize: '12px', background: '#E1F5EE', color: '#0d6e50', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {c}
+                      <button type="button" onClick={() => setForm(prev => ({ ...prev, category: prev.category.filter(x => x !== c) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0d6e50', fontSize: '12px', padding: '0', lineHeight: 1 }}>✕</button>
+                    </span>
                   ))}
                 </div>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '120px', overflowY: 'auto', padding: '4px' }}>
+                {categories.map(c => (
+                  <button key={c} type="button" onClick={() => setForm(prev => ({ ...prev, category: prev.category.includes(c) ? prev.category.filter(x => x !== c) : [...prev.category, c] }))} style={{
+                    padding: '5px 12px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
+                    border: `1px solid ${form.category.includes(c) ? '#1D9E75' : 'rgba(0,0,0,0.15)'}`,
+                    background: form.category.includes(c) ? '#E1F5EE' : '#fff',
+                    color: form.category.includes(c) ? '#0d6e50' : '#6b6b67',
+                    fontWeight: form.category.includes(c) ? '600' : '400'
+                  }}>{c}</button>
+                ))}
               </div>
             </div>
           </div>
 
-          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '1rem' }}>
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.7px', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>企画内容</div>
             {field('コンセプト', 'concept', 'このサービスが解決する課題と提供する価値', 3)}
             {field('主な機能・サービス', 'features', '・機能1\n・機能2\n・機能3', 5)}
@@ -164,20 +219,69 @@ export default function EditIdeaPage() {
             {field('メモ＆補足', 'memo', '競合調査、懸念点、次のアクションなど', 4)}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <Link href={`/ideas/${params.id}`} style={{
-              padding: '10px 20px', borderRadius: '10px', fontSize: '14px',
-              border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67',
-              textDecoration: 'none', display: 'inline-block'
-            }}>キャンセル</Link>
+          {/* 編集履歴 */}
+          {history.length > 0 && (
+            <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem', marginBottom: '1rem' }}>
+              <button type="button" onClick={() => setShowHistory(!showHistory)} style={{
+                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0
+              }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a18' }}>🕐 編集履歴（{history.length}件）</div>
+                <span style={{ fontSize: '12px', color: '#6b6b67' }}>{showHistory ? '▲ 閉じる' : '▼ 開く'}</span>
+              </button>
+
+              {showHistory && (
+                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {history.map((h, idx) => {
+                    const next = history[idx - 1]
+                    const diffs = [
+                      getDiff(h.title, next?.title, 'タイトル'),
+                      getDiff(h.concept, next?.concept, 'コンセプト'),
+                      getDiff(h.features, next?.features, '機能'),
+                      getDiff(h.target, next?.target, 'ターゲット'),
+                      getDiff(h.revenue, next?.revenue, '収益モデル'),
+                      getDiff(h.edge, next?.edge, '差別化'),
+                      getDiff(h.launch, next?.launch, '戦略'),
+                      getDiff(h.memo, next?.memo, 'メモ'),
+                    ].filter(Boolean)
+
+                    return (
+                      <div key={h.id} style={{ background: '#f5f4f0', borderRadius: '10px', padding: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: '700', color: '#1D9E75' }}>
+                            🕐 {formatDate(h.created_at)}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#a0a09c' }}>タイムスタンプ証明</div>
+                        </div>
+                        {diffs.length === 0 ? (
+                          <div style={{ fontSize: '12px', color: '#6b6b67' }}>（この時点の内容）タイトル：{h.title}</div>
+                        ) : diffs.map(d => (
+                          <div key={d.label} style={{ marginBottom: '6px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#6b6b67', marginBottom: '3px' }}>{d.label}</div>
+                            <div style={{ fontSize: '12px', color: '#c04020', background: '#fff0ee', borderRadius: '6px', padding: '4px 8px', marginBottom: '3px' }}>
+                              − {d.old?.slice(0, 80)}{d.old?.length > 80 ? '...' : ''}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#0d6e50', background: '#f0faf6', borderRadius: '6px', padding: '4px 8px' }}>
+                              ＋ {d.current?.slice(0, 80)}{d.current?.length > 80 ? '...' : ''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+            <Link href={`/ideas/${params.id}`} style={{ padding: '10px 20px', borderRadius: '10px', fontSize: '14px', border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67', textDecoration: 'none', display: 'inline-block' }}>キャンセル</Link>
             <button type="submit" disabled={saving} style={{
               background: '#1D9E75', color: '#fff', border: 'none',
               padding: '10px 28px', borderRadius: '10px', fontSize: '14px',
               fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.7 : 1
-            }}>
-              {saving ? '保存中...' : '保存する'}
-            </button>
+            }}>{saving ? '保存中...' : '保存する'}</button>
           </div>
         </form>
       </div>
