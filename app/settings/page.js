@@ -1,8 +1,9 @@
- 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Navbar from '../../components/Navbar'
 
 export default function SettingsPage() {
   const [user, setUser] = useState(null)
@@ -35,18 +36,14 @@ export default function SettingsPage() {
   }
 
   async function getBlocks(userId) {
-    const { data } = await supabase
-      .from('blocks')
-      .select('*, profiles!blocked_id(id, username, full_name, avatar_url)')
-      .eq('blocker_id', userId)
+    const { data } = await supabase.from('blocks')
+      .select('*, profiles!blocked_id(id, username, full_name, avatar_url)').eq('blocker_id', userId)
     setBlocks(data || [])
   }
 
   async function getMutes(userId) {
-    const { data } = await supabase
-      .from('mutes')
-      .select('*, profiles!muted_id(id, username, full_name, avatar_url)')
-      .eq('muter_id', userId)
+    const { data } = await supabase.from('mutes')
+      .select('*, profiles!muted_id(id, username, full_name, avatar_url)').eq('muter_id', userId)
     setMutes(data || [])
   }
 
@@ -91,19 +88,8 @@ export default function SettingsPage() {
           <div style={{ fontSize: '14px', fontWeight: '500', color: '#1a1a18' }}>{label}</div>
           {description && <div style={{ fontSize: '12px', color: '#a0a09c', marginTop: '2px' }}>{description}</div>}
         </div>
-        <div
-          onClick={() => onChange(!value)}
-          style={{
-            width: '44px', height: '24px', borderRadius: '12px',
-            background: value ? '#1D9E75' : '#d0cec8',
-            position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0
-          }}
-        >
-          <div style={{
-            width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
-            position: 'absolute', top: '3px', left: value ? '23px' : '3px',
-            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-          }} />
+        <div onClick={() => onChange(!value)} style={{ width: '44px', height: '24px', borderRadius: '12px', background: value ? '#1D9E75' : '#d0cec8', position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
+          <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '3px', left: value ? '23px' : '3px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
         </div>
       </div>
     )
@@ -113,21 +99,14 @@ export default function SettingsPage() {
     const name = p?.full_name || p?.username || '名無し'
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '0.5px solid rgba(0,0,0,0.06)' }}>
-        <div style={{
-          width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-          background: '#E1F5EE', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: '14px', fontWeight: '600', color: '#0F6E56', overflow: 'hidden'
-        }}>
+        <div style={{ width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0, background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', color: '#0F6E56', overflow: 'hidden' }}>
           {p?.avatar_url ? <img src={p.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : name[0]}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>{name}</div>
           {p?.username && <div style={{ fontSize: '11px', color: '#a0a09c' }}>@{p.username}</div>}
         </div>
-        <button onClick={onAction} style={{
-          padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-          border: `0.5px solid ${actionColor}`, color: actionColor, background: 'none', cursor: 'pointer'
-        }}>{actionLabel}</button>
+        <button onClick={onAction} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', border: `0.5px solid ${actionColor}`, color: actionColor, background: 'none', cursor: 'pointer' }}>{actionLabel}</button>
       </div>
     )
   }
@@ -136,6 +115,7 @@ export default function SettingsPage() {
     { key: 'account', label: 'アカウント', icon: '👤' },
     { key: 'privacy', label: 'プライバシー', icon: '🔒' },
     { key: 'notification', label: '通知', icon: '🔔' },
+    { key: 'security', label: 'セキュリティ', icon: '🛡️' },
   ]
 
   if (loading) return (
@@ -146,21 +126,11 @@ export default function SettingsPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
-      <nav style={{
-        background: '#fff', borderBottom: '0.5px solid rgba(0,0,0,0.1)',
-        padding: '0 1.5rem', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px', position: 'sticky', top: 0, zIndex: 10
-      }}>
-        <Link href="/" style={{ fontSize: '20px', fontWeight: '700', letterSpacing: '-0.5px', textDecoration: 'none', color: 'inherit' }}>
-          IDEA<span style={{ color: '#1D9E75' }}>VAULT</span>
-        </Link>
-        <Link href="/" style={{ fontSize: '13px', color: '#6b6b67', textDecoration: 'none' }}>← フィードに戻る</Link>
-      </nav>
-
+      <Navbar />
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1.25rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '1.5rem', letterSpacing: '-0.5px' }}>設定</h1>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'min(200px, 100%) 1fr', gap: '12px' }}>
 
           {/* サイドバー */}
           <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '8px', height: 'fit-content' }}>
@@ -185,7 +155,6 @@ export default function SettingsPage() {
             {section === 'account' && (
               <div>
                 <div style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a18', marginBottom: '1.25rem' }}>アカウント情報</div>
-
                 <div style={{ background: '#f5f4f0', borderRadius: '10px', padding: '14px', marginBottom: '1.5rem' }}>
                   <div style={{ fontSize: '11px', fontWeight: '700', color: '#a0a09c', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>メールアドレス</div>
                   <div style={{ fontSize: '14px', color: '#1a1a18' }}>{user?.email}</div>
@@ -193,27 +162,17 @@ export default function SettingsPage() {
 
                 <div style={{ marginBottom: '1.5rem' }}>
                   <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a18', marginBottom: '10px' }}>パスワードを変更</div>
-                  <input
-                    type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
                     placeholder="新しいパスワード（6文字以上）"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }}
-                  />
-                  {passwordMsg && (
-                    <div style={{ fontSize: '13px', color: passwordMsg.includes('エラー') ? '#c04020' : '#0d6e50', marginBottom: '8px' }}>{passwordMsg}</div>
-                  )}
-                  <button onClick={changePassword} style={{
-                    padding: '8px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-                    background: '#1a1a18', color: '#fff', border: 'none', cursor: 'pointer'
-                  }}>変更する</button>
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }} />
+                  {passwordMsg && <div style={{ fontSize: '13px', color: passwordMsg.includes('エラー') ? '#c04020' : '#0d6e50', marginBottom: '8px' }}>{passwordMsg}</div>}
+                  <button onClick={changePassword} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: '#1a1a18', color: '#fff', border: 'none', cursor: 'pointer' }}>変更する</button>
                 </div>
 
                 <div style={{ borderTop: '0.5px solid rgba(0,0,0,0.08)', paddingTop: '1.25rem' }}>
                   <div style={{ fontSize: '14px', fontWeight: '600', color: '#c04020', marginBottom: '6px' }}>アカウントを削除</div>
                   <div style={{ fontSize: '12px', color: '#a0a09c', marginBottom: '10px' }}>この操作は取り消せません。すべてのデータが削除されます。</div>
-                  <button onClick={deleteAccount} style={{
-                    padding: '8px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-                    background: 'none', color: '#c04020', border: '1px solid #c04020', cursor: 'pointer'
-                  }}>アカウントを削除する</button>
+                  <button onClick={deleteAccount} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: 'none', color: '#c04020', border: '1px solid #c04020', cursor: 'pointer' }}>アカウントを削除する</button>
                 </div>
               </div>
             )}
@@ -222,39 +181,24 @@ export default function SettingsPage() {
             {section === 'privacy' && (
               <div>
                 <div style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a18', marginBottom: '1.25rem' }}>プライバシー設定</div>
-
                 <div style={{ marginBottom: '1.5rem' }}>
                   <div style={{ fontSize: '13px', fontWeight: '700', color: '#6b6b67', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>ポストの表示</div>
-                  <Toggle
-                    value={profile?.is_private || false}
-                    onChange={v => updateProfile({ is_private: v })}
-                    label="🔒 鍵垢にする"
-                    description="フォロワーのみ企画・投稿を閲覧できます"
-                  />
-                  <Toggle
-                    value={profile?.is_sensitive || false}
-                    onChange={v => updateProfile({ is_sensitive: v })}
-                    label="⚠️ センシティブコンテンツ"
-                    description="センシティブな内容を含む投稿として表示します"
-                  />
+                  <Toggle value={profile?.is_private || false} onChange={v => updateProfile({ is_private: v })} label="🔒 鍵垢にする" description="フォロワーのみ企画・投稿を閲覧できます" />
+                  <Toggle value={profile?.is_sensitive || false} onChange={v => updateProfile({ is_sensitive: v })} label="⚠️ センシティブコンテンツ" description="センシティブな内容を含む投稿として表示します" />
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
                   <div style={{ fontSize: '13px', fontWeight: '700', color: '#6b6b67', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>ブロックリスト</div>
                   {blocks.length === 0 ? (
                     <div style={{ fontSize: '13px', color: '#a0a09c' }}>ブロックしているユーザーはいません</div>
-                  ) : blocks.map(b => (
-                    <UserRow key={b.id} p={b.profiles} actionLabel="解除" onAction={() => unblock(b.id)} />
-                  ))}
+                  ) : blocks.map(b => <UserRow key={b.id} p={b.profiles} actionLabel="解除" onAction={() => unblock(b.id)} />)}
                 </div>
 
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: '700', color: '#6b6b67', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>ミュートリスト</div>
                   {mutes.length === 0 ? (
                     <div style={{ fontSize: '13px', color: '#a0a09c' }}>ミュートしているユーザーはいません</div>
-                  ) : mutes.map(m => (
-                    <UserRow key={m.id} p={m.profiles} actionLabel="解除" actionColor="#6b6b67" onAction={() => unmute(m.id)} />
-                  ))}
+                  ) : mutes.map(m => <UserRow key={m.id} p={m.profiles} actionLabel="解除" actionColor="#6b6b67" onAction={() => unmute(m.id)} />)}
                 </div>
               </div>
             )}
@@ -263,18 +207,49 @@ export default function SettingsPage() {
             {section === 'notification' && (
               <div>
                 <div style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a18', marginBottom: '1.25rem' }}>通知設定</div>
-                <Toggle
-                  value={profile?.notify_dm !== false}
-                  onChange={v => updateProfile({ notify_dm: v })}
-                  label="💬 DM通知"
-                  description="新しいメッセージを受信したときに通知します"
-                />
-                <Toggle
-                  value={profile?.notify_like !== false}
-                  onChange={v => updateProfile({ notify_like: v })}
-                  label="❤️ いいね通知"
-                  description="投稿にいいねされたときに通知します"
-                />
+                <Toggle value={profile?.notify_dm !== false} onChange={v => updateProfile({ notify_dm: v })} label="💬 DM通知" description="新しいメッセージを受信したときに通知します" />
+                <Toggle value={profile?.notify_like !== false} onChange={v => updateProfile({ notify_like: v })} label="❤️ いいね通知" description="投稿にいいねされたときに通知します" />
+                <Toggle value={profile?.notify_scout !== false} onChange={v => updateProfile({ notify_scout: v })} label="📨 スカウト通知" description="スカウトが届いたときに通知します" />
+                <Toggle value={profile?.notify_follow !== false} onChange={v => updateProfile({ notify_follow: v })} label="👤 フォロー通知" description="フォローされたときに通知します" />
+              </div>
+            )}
+
+            {/* セキュリティ */}
+            {section === 'security' && (
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a18', marginBottom: '1.25rem' }}>セキュリティ設定</div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <Link href="/settings/sessions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderRadius: '12px', border: '0.5px solid rgba(0,0,0,0.1)', textDecoration: 'none', background: '#fff' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '22px' }}>🖥️</span>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a18', marginBottom: '2px' }}>セッション管理</div>
+                        <div style={{ fontSize: '12px', color: '#6b6b67' }}>現在ログイン中の端末一覧・強制ログアウト</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '16px', color: '#a0a09c' }}>→</span>
+                  </Link>
+
+                  <Link href="/settings/2fa" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderRadius: '12px', border: '0.5px solid rgba(0,0,0,0.1)', textDecoration: 'none', background: '#fff' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '22px' }}>🔐</span>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a18', marginBottom: '2px' }}>2要素認証（2FA）</div>
+                        <div style={{ fontSize: '12px', color: '#6b6b67' }}>認証アプリでアカウントを保護する</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '16px', color: '#a0a09c' }}>→</span>
+                  </Link>
+
+                  <div style={{ background: '#faeeda', borderRadius: '12px', padding: '12px 14px', fontSize: '12px', color: '#8a4f0a', lineHeight: '1.7' }}>
+                    ⚠️ 企業・投資家アカウントは2要素認証の設定を強く推奨します。
+                  </div>
+                </div>
               </div>
             )}
           </div>
