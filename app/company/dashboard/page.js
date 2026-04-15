@@ -112,7 +112,7 @@ export default function CompanyDashboard() {
         </div>
 
         {/* 統計カード */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: '12px', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', marginBottom: '1.5rem' }}>
           {[
             { label: '送信スカウト数', num: stats.sent, color: '#1a3a5c' },
             { label: '承諾済み', num: stats.accepted, color: '#0d6e50' },
@@ -126,7 +126,7 @@ export default function CompanyDashboard() {
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: '16px' }}>
 
           {/* 最近のスカウト */}
           <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>

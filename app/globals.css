@@ -1,1 +1,22 @@
- 
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* ===== スマホ対応 ===== */
+@media (max-width: 768px) {
+
+  /* メッセージページの2カラム→1カラム */
+  .messages-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* グリッドを1カラムに */
+  .feed-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
