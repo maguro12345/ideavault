@@ -133,9 +133,23 @@ function ScoutContent() {
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '8px' }}>
                 提案内容 <span style={{ color: '#c04020' }}>*</span>
               </label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                {[
+                  { label: '初回挨拶', text: `はじめまして。${idea?.profiles?.full_name || 'あなた'}様のアイデアを拝見し、大変興味を持ちました。ぜひ一度お話しさせていただけますでしょうか。` },
+                  { label: '投資検討', text: `貴殿のアイデアに投資の観点から大きな可能性を感じております。詳細についてお話しさせていただき、投資の可能性を検討したいと考えております。` },
+                  { label: '共同開発', text: `貴殿のアイデアと弊社のリソースを組み合わせることで、より大きな価値を生み出せると確信しております。共同開発のご提案をさせていただきたく、ご連絡いたします。` },
+                  { label: '業務提携', text: `貴殿のアイデアは弊社の事業と高い親和性があると感じております。業務提携という形でご協力できればと考えております。` },
+                ].map(t => (
+                  <button key={t.label} type="button" onClick={() => setForm({ ...form, content: t.text })} style={{
+                    padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
+                    border: '1px solid rgba(26,58,92,0.3)', background: '#eef2f7',
+                    color: '#1a3a5c', cursor: 'pointer'
+                  }}>{t.label}</button>
+                ))}
+              </div>
               <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })}
                 placeholder="なぜこのアイデアに関心を持ったか、どのような形で一緒に進めたいかを具体的に記載してください"
                 rows={6} style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', resize: 'vertical', lineHeight: '1.7', fontFamily: 'inherit', boxSizing: 'border-box' }} />
