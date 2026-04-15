@@ -104,6 +104,24 @@ export default function NewIdeaPage() {
               </select>
             </div>
 
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '8px' }}>公開範囲</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  { value: 'public', label: '全公開', desc: 'すべてのユーザーが詳細まで閲覧できます' },
+                  { value: 'summary', label: '概要のみ公開', desc: 'タイトル・コンセプトのみ公開。詳細はスカウト承認後に開示' },
+                ].map(opt => (
+                  <label key={opt.value} onClick={() => setForm({ ...form, visibility: opt.value })} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', borderRadius: '10px', border: `1.5px solid ${form.visibility === opt.value ? '#1D9E75' : 'rgba(0,0,0,0.1)'}`, background: form.visibility === opt.value ? '#E1F5EE' : '#fff', cursor: 'pointer' }}>
+                    <input type="radio" name="visibility" value={opt.value} checked={form.visibility === opt.value} onChange={() => setForm({ ...form, visibility: opt.value })} style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>{opt.label}</div>
+                      <div style={{ fontSize: '11px', color: '#6b6b67', marginTop: '2px' }}>{opt.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '8px' }}>
                 カテゴリ <span style={{ fontWeight: '400', color: '#a0a09c' }}>（複数選択可）</span>
