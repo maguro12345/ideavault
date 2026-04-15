@@ -86,13 +86,29 @@ export default function CompanyDashboard() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1.25rem' }}>
 
         {/* ウェルカム */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a18', marginBottom: '4px' }}>
-            おかえりなさい、{profile?.company_name || profile?.full_name}さん
-          </h1>
-          <div style={{ fontSize: '13px', color: '#6b6b67' }}>
-            {profile?.industry && `${profile.industry} · `}{profile?.company_type}アカウント
+        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a18', marginBottom: '4px' }}>
+              おかえりなさい、{profile?.company_name || profile?.full_name}さん
+            </h1>
+            <div style={{ fontSize: '13px', color: '#6b6b67' }}>
+              {profile?.industry && `${profile.industry} · `}{profile?.company_type}アカウント
+            </div>
           </div>
+          {profile?.is_verified ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#d8f2ea', padding: '6px 14px', borderRadius: '20px' }}>
+              <span style={{ fontSize: '14px' }}>✅</span>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#0d6e50' }}>認証済み法人</span>
+            </div>
+          ) : (
+            <button onClick={() => router.push('/company/verify')} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              background: '#fff', border: '1.5px solid #1a3a5c', padding: '7px 16px',
+              borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: '700', color: '#1a3a5c'
+            }}>
+              🏛️ 法人認証を取得する
+            </button>
+          )}
         </div>
 
         {/* 統計カード */}
