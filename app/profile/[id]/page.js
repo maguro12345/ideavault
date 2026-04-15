@@ -13,6 +13,7 @@ export default function ProfilePage() {
   const [followState, setFollowState] = useState('none')
   const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
   const [requests, setRequests] = useState([])
+  const [menuOpen, setMenuOpen] = useState(false)
   const params = useParams()
   const router = useRouter()
   const supabase = createClient()
@@ -244,36 +245,22 @@ export default function ProfilePage() {
                     }}>メッセージ</Link>
                   )}
                   <div style={{ position: 'relative' }}>
-                    <button onClick={() => document.getElementById('more-menu').style.display === 'none' ? document.getElementById('more-menu').style.display = 'block' : document.getElementById('more-menu').style.display = 'none'} style={{
+                    <button onClick={() => setMenuOpen(!menuOpen)} style={{
                       padding: '7px 12px', borderRadius: '20px', fontSize: '16px',
                       border: '1px solid rgba(0,0,0,0.2)', background: '#fff', cursor: 'pointer'
                     }}>•••</button>
-                    <div id="more-menu" style={{ display: 'none', position: 'absolute', right: 0, top: '36px', background: '#fff', borderRadius: '12px', border: '0.5px solid rgba(0,0,0,0.15)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 10, minWidth: '140px', overflow: 'hidden' }}>
-                      <div onClick={muteUser} style={{ padding: '12px 16px', fontSize: '13px', cursor: 'pointer', color: '#1a1a18', borderBottom: '0.5px solid rgba(0,0,0,0.06)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                      >🔇 ミュートする</div>
-                      <div onClick={blockUser} style={{ padding: '12px 16px', fontSize: '13px', cursor: 'pointer', color: '#c04020' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                      >🚫 ブロックする</div>
-                    </div>
-                  </div>
-                  <div style={{ position: 'relative' }}>
-                    <button onClick={() => document.getElementById('more-menu').style.display === 'none' ? document.getElementById('more-menu').style.display = 'block' : document.getElementById('more-menu').style.display = 'none'} style={{
-                      padding: '7px 12px', borderRadius: '20px', fontSize: '16px',
-                      border: '1px solid rgba(0,0,0,0.2)', background: '#fff', cursor: 'pointer'
-                    }}>•••</button>
-                    <div id="more-menu" style={{ display: 'none', position: 'absolute', right: 0, top: '36px', background: '#fff', borderRadius: '12px', border: '0.5px solid rgba(0,0,0,0.15)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 10, minWidth: '140px', overflow: 'hidden' }}>
-                      <div onClick={muteUser} style={{ padding: '12px 16px', fontSize: '13px', cursor: 'pointer', color: '#1a1a18', borderBottom: '0.5px solid rgba(0,0,0,0.06)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                      >🔇 ミュートする</div>
-                      <div onClick={blockUser} style={{ padding: '12px 16px', fontSize: '13px', cursor: 'pointer', color: '#c04020' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                      >🚫 ブロックする</div>
-                    </div>
+                    {menuOpen && (
+                      <div style={{ position: 'absolute', right: 0, top: '36px', background: '#fff', borderRadius: '12px', border: '0.5px solid rgba(0,0,0,0.15)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 10, minWidth: '140px', overflow: 'hidden' }}>
+                        <div onClick={muteUser} style={{ padding: '12px 16px', fontSize: '13px', cursor: 'pointer', color: '#1a1a18', borderBottom: '0.5px solid rgba(0,0,0,0.06)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
+                          onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                        >🔇 ミュートする</div>
+                        <div onClick={blockUser} style={{ padding: '12px 16px', fontSize: '13px', cursor: 'pointer', color: '#c04020' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
+                          onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                        >🚫 ブロックする</div>
+                      </div>
+                    )}
                   </div>
                   <button onClick={toggleFollow} style={{
                     padding: '7px 18px', borderRadius: '20px', fontSize: '13px', fontWeight: '700',
@@ -292,7 +279,19 @@ export default function ProfilePage() {
           {/* プロフィール情報 */}
           <div style={{ padding: '0 1.5rem 1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a18' }}>{name}</div>
+              {profile?.is_verified && (
+                <span style={{ fontSize: '12px', background: '#d8f2ea', color: '#0d6e50', padding: '4px 12px', borderRadius: '20px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  ✅ 認証済み法人
+                </span>
+              )}
+              {profile?.is_company && !profile?.is_verified && (
+                <span style={{ fontSize: '12px', background: '#eef2f7', color: '#1a3a5c', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
+                  🏢 法人
+                </span>
+              )}
+            </div>
               {profile.is_private && <span style={{ fontSize: '16px' }}>🔒</span>}
             </div>
             {profile.username && <div style={{ fontSize: '14px', color: '#6b6b67', marginBottom: '10px' }}>@{profile.username}</div>}
