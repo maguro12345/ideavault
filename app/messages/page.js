@@ -59,7 +59,7 @@ function MessagesContent() {
     const otherIds = [...new Set(data.map(m => m.sender_id === userId ? m.receiver_id : m.sender_id))]
     setThreads(otherIds)
     if (otherIds.length > 0) {
-      const { data: profileData } = await supabase.from('profiles').select('id, username, full_name, is_company, company_name, avatar_url').in('id', otherIds)
+      const { data: profileData } = await supabase.from('profiles').select('id, username, full_name, is_company, company_name, avatar_url, is_verified').in('id', otherIds)
       const map = {}
       profileData?.forEach(p => map[p.id] = p)
       setProfiles(prev => ({ ...prev, ...map }))
@@ -83,7 +83,7 @@ function MessagesContent() {
     setMessages(data || [])
     await supabase.from('messages').update({ is_read: true }).eq('receiver_id', user.id).eq('sender_id', otherId)
     if (!profiles[otherId]) {
-      const { data: p } = await supabase.from('profiles').select('id, username, full_name, is_company, company_name, avatar_url').eq('id', otherId).single()
+      const { data: p } = await supabase.from('profiles').select('id, username, full_name, is_company, company_name, avatar_url, is_verified').eq('id', otherId).single()
       if (p) setProfiles(prev => ({ ...prev, [p.id]: p }))
     }
   }
@@ -205,6 +205,16 @@ function MessagesContent() {
   const bg = isCompany ? '#f0f2f5' : '#f5f4f0'
   const msgBg = isCompany ? '#1a3a5c' : '#1D9E75'
 
+  function VerifiedBadge({ profile, small = false }) {
+    if (profile?.is_verified) {
+      return <span style={{ fontSize: small ? '9px' : '10px', background: '#d8f2ea', color: '#0d6e50', padding: small ? '1px 5px' : '2px 7px', borderRadius: '20px', fontWeight: '600', flexShrink: 0 }}>✅ 認証済み</span>
+    }
+    if (profile?.is_company) {
+      return <span style={{ fontSize: small ? '9px' : '10px', background: '#eef2f7', color: '#1a3a5c', padding: small ? '1px 5px' : '2px 7px', borderRadius: '20px', fontWeight: '600', flexShrink: 0 }}>🏢 法人</span>
+    }
+    return null
+  }
+
   function Avatar({ profile, size = 36, onClick }) {
     const n = profile?.full_name || profile?.username || '?'
     return (
@@ -288,7 +298,12 @@ function MessagesContent() {
                 ) : threads.map(id => (
                   <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', background: selectedDM === id ? (isCompany ? '#eef2f7' : '#f0eeea') : '#fff' }}>
                     <Avatar profile={profiles[id]} onClick={() => router.push(`/profile/${id}`)} />
-                    <div onClick={() => { setSelectedDM(id); setSelectedGroup(null) }} style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a18', flex: 1, cursor: 'pointer' }}>{getName(id)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div onClick={() => { setSelectedDM(id); setSelectedGroup(null) }} style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a18', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                        <span>{getName(id)}</span>
+                        <VerifiedBadge profile={profiles[id]} small />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -320,11 +335,7 @@ function MessagesContent() {
                     <>
                       <Avatar profile={profiles[selectedDM]} size={28} onClick={() => router.push(`/profile/${selectedDM}`)} />
                       <div onClick={() => router.push(`/profile/${selectedDM}`)} style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', cursor: 'pointer' }}>{getName(selectedDM)}</div>
-                      {isCompany && profiles[selectedDM] && (
-                        <span style={{ fontSize: '10px', background: '#eef2f7', color: '#1a3a5c', padding: '2px 7px', borderRadius: '20px', fontWeight: '600' }}>
-                          {profiles[selectedDM]?.is_company ? '法人' : '個人'}
-                        </span>
-                      )}
+                      <VerifiedBadge profile={profiles[selectedDM]} />
                     </>
                   ) : (
                     <><div style={{ fontSize: '18px' }}>👥</div><div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>{getGroupName(selectedGroup)}</div></>
