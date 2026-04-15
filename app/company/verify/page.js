@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -6,6 +6,7 @@ import CompanyNavbar from '../../../components/CompanyNavbar'
 
 export default function CompanyVerifyPage() {
   const [profile, setProfile] = useState(null)
+  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [corpNumber, setCorpNumber] = useState('')
@@ -19,6 +20,7 @@ export default function CompanyVerifyPage() {
   async function init() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
+    setUser(user)
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (!data?.is_company) { router.push('/'); return }
     setProfile(data)
@@ -29,28 +31,36 @@ export default function CompanyVerifyPage() {
   async function checkCorpNumber() {
     if (corpNumber.length !== 13) { alert('法人番号は13桁で入力してください'); return }
     setChecking(true)
+    setVerifyResult(null)
     try {
-      const res = await fetch(`https://api.houjin-bangou.nta.go.jp/4/num?id=&number=${corpNumber}&type=12&history=0`)
-      if (res.ok) {
-        setVerifyResult({ found: true, message: '法人番号が確認できました' })
-      } else {
-        setVerifyResult({ found: false, message: '法人番号を確認できませんでした' })
-      }
-    } catch {
-      setVerifyResult({ found: true, message: '形式は正しいです。申請を進めてください。' })
+      const res = await fetch(`/api/verify-corp?number=${corpNumber}`)
+      const data = await res.json()
+      setVerifyResult(data)
+    } catch (err) {
+      setVerifyResult({ found: false, message: '確認中にエラーが発生しました' })
     }
     setChecking(false)
   }
 
   async function applyVerification() {
-    if (!corpNumber.trim()) { alert('法人番号を入力してください'); return }
+    if (!verifyResult?.found) {
+      alert('先に法人番号を確認してください')
+      return
+    }
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('profiles').update({
+    const { error } = await supabase.from('profiles').update({
       corporate_number: corpNumber,
       is_verified: true
     }).eq('id', user.id)
-    setProfile(prev => ({ ...prev, corporate_number: corpNumber, is_verified: true }))
+
+    if (error) {
+      alert('エラー: ' + error.message)
+      setSaving(false)
+      return
+    }
+
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+    setProfile(data)
     setSaving(false)
     alert('認証バッジを取得しました！')
   }
@@ -82,7 +92,7 @@ export default function CompanyVerifyPage() {
           <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a18', marginBottom: '14px' }}>認証バッジとは</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem' }}>
             {[
-              { icon: '🏛️', text: '法人番号を登録することで、正式な法人であることが証明されます' },
+              { icon: '🏛️', text: '法人番号を国税庁APIで確認。実在する法人のみ認証されます' },
               { icon: '✅', text: 'プロフィールとスカウトに「認証済み」バッジが表示されます' },
               { icon: '📈', text: '認証済みアカウントはスカウトの承諾率が向上します' },
               { icon: '🔒', text: '個人投稿者が安心してスカウトを受けられるようになります' },
@@ -97,14 +107,19 @@ export default function CompanyVerifyPage() {
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>法人番号（13桁）</label>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <input value={corpNumber} onChange={e => setCorpNumber(e.target.value.replace(/\D/g, '').slice(0, 13))}
+              <input
+                value={corpNumber}
+                onChange={e => { setCorpNumber(e.target.value.replace(/\D/g, '').slice(0, 13)); setVerifyResult(null) }}
                 placeholder="例：1234567890123"
-                style={{ flex: 1, padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none' }} />
+                style={{ flex: 1, padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none' }}
+              />
               <button onClick={checkCorpNumber} disabled={checking || corpNumber.length !== 13} style={{
                 padding: '9px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-                background: '#f0f2f5', color: '#1a3a5c', border: '0.5px solid rgba(26,58,92,0.3)',
-                cursor: 'pointer', whiteSpace: 'nowrap', opacity: corpNumber.length !== 13 ? 0.6 : 1
-              }}>{checking ? '確認中...' : '確認'}</button>
+                background: corpNumber.length === 13 ? '#1a3a5c' : '#f0f2f5',
+                color: corpNumber.length === 13 ? '#fff' : '#a0a09c',
+                border: 'none', cursor: corpNumber.length !== 13 ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap'
+              }}>{checking ? '確認中...' : '法人番号を確認'}</button>
             </div>
             <div style={{ fontSize: '11px', color: '#a0a09c', marginTop: '5px' }}>
               法人番号は
@@ -114,17 +129,31 @@ export default function CompanyVerifyPage() {
           </div>
 
           {verifyResult && (
-            <div style={{ background: verifyResult.found ? '#d8f2ea' : '#fdeae4', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px', fontSize: '13px', color: verifyResult.found ? '#0d6e50' : '#c04020' }}>
-              {verifyResult.message}
+            <div style={{
+              background: verifyResult.found ? '#d8f2ea' : '#fdeae4',
+              borderRadius: '10px', padding: '12px 14px', marginBottom: '12px',
+              display: 'flex', alignItems: 'center', gap: '8px'
+            }}>
+              <span style={{ fontSize: '16px' }}>{verifyResult.found ? '✅' : '❌'}</span>
+              <div style={{ fontSize: '13px', color: verifyResult.found ? '#0d6e50' : '#c04020', fontWeight: '600' }}>
+                {verifyResult.message}
+              </div>
             </div>
           )}
 
-          <button onClick={applyVerification} disabled={saving || !corpNumber.trim()} style={{
-            width: '100%', padding: '11px', background: '#1a3a5c', color: '#fff',
-            border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-            cursor: saving || !corpNumber.trim() ? 'not-allowed' : 'pointer',
-            opacity: saving || !corpNumber.trim() ? 0.6 : 1
-          }}>{saving ? '処理中...' : '✅ 認証バッジを取得する'}</button>
+          <button
+            onClick={applyVerification}
+            disabled={saving || !verifyResult?.found || profile?.is_verified}
+            style={{
+              width: '100%', padding: '11px',
+              background: verifyResult?.found && !profile?.is_verified ? '#1a3a5c' : '#f0f2f5',
+              color: verifyResult?.found && !profile?.is_verified ? '#fff' : '#a0a09c',
+              border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+              cursor: (saving || !verifyResult?.found || profile?.is_verified) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {profile?.is_verified ? '✅ 認証済みです' : saving ? '処理中...' : '✅ 認証バッジを取得する'}
+          </button>
         </div>
       </div>
     </div>
