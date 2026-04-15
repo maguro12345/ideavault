@@ -83,7 +83,6 @@ export default function CompanyNavbar() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {/* ビジネスチャット（スカウト承諾後） */}
         <div style={{ position: 'relative' }}>
           <Link href="/company/scouts" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '6px 8px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)' }} title="ビジネスチャット">💼</Link>
           {unreadBiz > 0 && (
@@ -91,7 +90,6 @@ export default function CompanyNavbar() {
           )}
         </div>
 
-        {/* 通常DM・グループ */}
         <div style={{ position: 'relative' }}>
           <Link href="/messages" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '6px 8px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)' }} title="メッセージ">💬</Link>
           {unreadDM > 0 && (
@@ -105,7 +103,9 @@ export default function CompanyNavbar() {
           <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#5DCAA5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🏢</div>
           <span style={{ fontSize: '12px', color: '#fff', fontWeight: '500' }}>{name}</span>
         </div>
-        <Link href="/company/profile" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>設定</Link>
+
+        <Link href="/company/plan" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none', padding: '5px 8px', borderRadius: '6px', background: pathname === '/company/plan' ? 'rgba(255,255,255,0.15)' : 'none' }}>プラン</Link>
+        <Link href="/company/profile" style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textDecoration: 'none', padding: '5px 8px', borderRadius: '6px', background: pathname === '/company/profile' ? 'rgba(255,255,255,0.15)' : 'none' }}>設定</Link>
         <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'rgba(255,255,255,0.7)', padding: '5px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>ログアウト</button>
       </div>
     </nav>

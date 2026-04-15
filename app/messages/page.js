@@ -3,11 +3,12 @@ import { Suspense } from 'react'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import Navbar from '../../components/Navbar'
+import CompanyNavbar from '../../components/CompanyNavbar'
 
 function MessagesContent() {
   const [user, setUser] = useState(null)
+  const [isCompany, setIsCompany] = useState(false)
   const [threads, setThreads] = useState([])
   const [groups, setGroups] = useState([])
   const [selectedDM, setSelectedDM] = useState(null)
@@ -42,6 +43,8 @@ function MessagesContent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
     setUser(user)
+    const { data: prof } = await supabase.from('profiles').select('is_company').eq('id', user.id).single()
+    setIsCompany(prof?.is_company || false)
     await getThreads(user.id)
     await getGroups(user.id)
     await getFollowers(user.id)
@@ -198,6 +201,10 @@ function MessagesContent() {
   function getGroupName(id) { return groups.find(g => g.id === id)?.name || 'グループ' }
   function formatTime(ts) { const d = new Date(ts); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` }
 
+  const accent = isCompany ? '#1a3a5c' : '#1D9E75'
+  const bg = isCompany ? '#f0f2f5' : '#f5f4f0'
+  const msgBg = isCompany ? '#1a3a5c' : '#1D9E75'
+
   function Avatar({ profile, size = 36, onClick }) {
     const n = profile?.full_name || profile?.username || '?'
     return (
@@ -240,11 +247,11 @@ function MessagesContent() {
           return (
             <div key={i} onClick={() => vote(poll.id, i)} style={{ marginBottom: '8px', cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                <span style={{ fontSize: '12px', fontWeight: isMyVote ? '700' : '400', color: isMyVote ? '#1D9E75' : '#1a1a18' }}>{isMyVote ? '✓ ' : ''}{opt}</span>
+                <span style={{ fontSize: '12px', fontWeight: isMyVote ? '700' : '400', color: isMyVote ? accent : '#1a1a18' }}>{isMyVote ? '✓ ' : ''}{opt}</span>
                 {hasVoted && <span style={{ fontSize: '11px', color: '#6b6b67' }}>{pct}% ({count}票)</span>}
               </div>
               <div style={{ height: '6px', background: '#d0cec8', borderRadius: '3px', overflow: 'hidden' }}>
-                {hasVoted && <div style={{ height: '100%', width: `${pct}%`, background: isMyVote ? '#1D9E75' : '#888780', borderRadius: '3px', transition: 'width 0.3s' }} />}
+                {hasVoted && <div style={{ height: '100%', width: `${pct}%`, background: isMyVote ? accent : '#888780', borderRadius: '3px', transition: 'width 0.3s' }} />}
               </div>
             </div>
           )
@@ -255,14 +262,14 @@ function MessagesContent() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f4f0' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: bg }}>
       <div style={{ color: '#6b6b67' }}>読み込み中...</div>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
-      <Navbar />
+    <div style={{ minHeight: '100vh', background: bg, fontFamily: 'system-ui, sans-serif' }}>
+      {isCompany ? <CompanyNavbar /> : <Navbar />}
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1.5rem 1.25rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '12px', height: 'calc(100vh - 120px)' }}>
 
@@ -270,7 +277,7 @@ function MessagesContent() {
           <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ display: 'flex', borderBottom: '0.5px solid rgba(0,0,0,0.08)' }}>
               {[{ key: 'dm', label: 'DM' }, { key: 'group', label: 'グループ' }].map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: '12px', fontSize: '13px', fontWeight: tab === t.key ? '700' : '400', color: tab === t.key ? '#1a1a18' : '#6b6b67', background: 'none', border: 'none', cursor: 'pointer', borderBottom: tab === t.key ? '2px solid #1a1a18' : '2px solid transparent' }}>{t.label}</button>
+                <button key={t.key} onClick={() => setTab(t.key)} style={{ flex: 1, padding: '12px', fontSize: '13px', fontWeight: tab === t.key ? '700' : '400', color: tab === t.key ? '#1a1a18' : '#6b6b67', background: 'none', border: 'none', cursor: 'pointer', borderBottom: tab === t.key ? `2px solid ${accent}` : '2px solid transparent' }}>{t.label}</button>
               ))}
             </div>
 
@@ -279,11 +286,8 @@ function MessagesContent() {
                 {threads.length === 0 ? (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>まだメッセージがありません</div>
                 ) : threads.map(id => (
-                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', background: selectedDM === id ? '#f0eeea' : '#fff' }}>
-                    <Avatar
-                      profile={profiles[id]}
-                      onClick={() => router.push(`/profile/${id}`)}
-                    />
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', background: selectedDM === id ? (isCompany ? '#eef2f7' : '#f0eeea') : '#fff' }}>
+                    <Avatar profile={profiles[id]} onClick={() => router.push(`/profile/${id}`)} />
                     <div onClick={() => { setSelectedDM(id); setSelectedGroup(null) }} style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a18', flex: 1, cursor: 'pointer' }}>{getName(id)}</div>
                   </div>
                 ))}
@@ -292,11 +296,11 @@ function MessagesContent() {
 
             {tab === 'group' && (
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                <button onClick={() => setShowNewGroup(true)} style={{ margin: '10px', padding: '8px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: '#1D9E75', color: '#fff', border: 'none', cursor: 'pointer' }}>＋ 新しいグループ</button>
+                <button onClick={() => setShowNewGroup(true)} style={{ margin: '10px', padding: '8px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: accent, color: '#fff', border: 'none', cursor: 'pointer' }}>＋ 新しいグループ</button>
                 {groups.length === 0 ? (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>グループがありません</div>
                 ) : groups.map(g => (
-                  <div key={g.id} onClick={() => { setSelectedGroup(g.id); setSelectedDM(null) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', cursor: 'pointer', background: selectedGroup === g.id ? '#f0eeea' : '#fff' }}>
+                  <div key={g.id} onClick={() => { setSelectedGroup(g.id); setSelectedDM(null) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', cursor: 'pointer', background: selectedGroup === g.id ? (isCompany ? '#eef2f7' : '#f0eeea') : '#fff' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>👥</div>
                     <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a18' }}>{g.name}</div>
                   </div>
@@ -311,17 +315,22 @@ function MessagesContent() {
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0a09c', fontSize: '13px' }}>相手またはグループを選んでください</div>
             ) : (
               <>
-                <div style={{ padding: '12px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: '8px', background: isCompany ? '#f8f9fb' : '#fff' }}>
                   {selectedDM ? (
                     <>
                       <Avatar profile={profiles[selectedDM]} size={28} onClick={() => router.push(`/profile/${selectedDM}`)} />
                       <div onClick={() => router.push(`/profile/${selectedDM}`)} style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', cursor: 'pointer' }}>{getName(selectedDM)}</div>
+                      {isCompany && profiles[selectedDM] && (
+                        <span style={{ fontSize: '10px', background: '#eef2f7', color: '#1a3a5c', padding: '2px 7px', borderRadius: '20px', fontWeight: '600' }}>
+                          {profiles[selectedDM]?.is_company ? '法人' : '個人'}
+                        </span>
+                      )}
                     </>
                   ) : (
                     <><div style={{ fontSize: '18px' }}>👥</div><div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>{getGroupName(selectedGroup)}</div></>
                   )}
                   {selectedGroup && (
-                    <button onClick={() => setShowPoll(true)} style={{ marginLeft: 'auto', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', background: '#f0eeea', color: '#1a1a18', border: 'none', cursor: 'pointer' }}>📊 投票を作成</button>
+                    <button onClick={() => setShowPoll(true)} style={{ marginLeft: 'auto', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', background: isCompany ? '#eef2f7' : '#f0eeea', color: '#1a1a18', border: 'none', cursor: 'pointer' }}>📊 投票を作成</button>
                   )}
                 </div>
 
@@ -335,7 +344,7 @@ function MessagesContent() {
                         {selectedGroup && !isMe && senderProfile && (
                           <div onClick={() => router.push(`/profile/${senderProfile.id}`)} style={{ fontSize: '11px', color: '#a0a09c', marginBottom: '3px', paddingLeft: '4px', cursor: 'pointer' }}>{senderProfile.full_name || senderProfile.username}</div>
                         )}
-                        <div style={{ maxWidth: '75%', padding: m.file_type === 'image' ? '4px' : '8px 12px', borderRadius: isMe ? '12px 12px 2px 12px' : '2px 12px 12px 12px', background: isMe ? '#1D9E75' : '#f0eeea', color: isMe ? '#fff' : '#1a1a18' }}>
+                        <div style={{ maxWidth: '75%', padding: m.file_type === 'image' ? '4px' : '8px 12px', borderRadius: isMe ? '12px 12px 2px 12px' : '2px 12px 12px 12px', background: isMe ? msgBg : (isCompany ? '#f0f2f5' : '#f0eeea'), color: isMe ? '#fff' : '#1a1a18' }}>
                           <FileMessage msg={m} />
                         </div>
                         <div style={{ fontSize: '10px', color: '#a0a09c', marginTop: '3px' }}>{formatTime(m.created_at)}</div>
@@ -363,22 +372,22 @@ function MessagesContent() {
                     <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
                       <button onClick={() => setPollOptions(prev => [...prev, ''])} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', background: '#fff', fontSize: '12px', cursor: 'pointer', color: '#6b6b67' }}>＋ 選択肢を追加</button>
                       <button onClick={() => { setShowPoll(false); setPollQuestion(''); setPollOptions(['', '']) }} style={{ padding: '6px 12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', background: '#fff', fontSize: '12px', cursor: 'pointer', color: '#6b6b67' }}>キャンセル</button>
-                      <button onClick={createPoll} style={{ padding: '6px 16px', borderRadius: '8px', background: '#1D9E75', color: '#fff', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>作成</button>
+                      <button onClick={createPoll} style={{ padding: '6px 16px', borderRadius: '8px', background: accent, color: '#fff', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>作成</button>
                     </div>
                   </div>
                 )}
 
-                <div style={{ padding: '10px 14px', borderTop: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#f0eeea', border: 'none', fontSize: '16px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ padding: '10px 14px', borderTop: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', gap: '8px', alignItems: 'center', background: isCompany ? '#f8f9fb' : '#fff' }}>
+                  <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ width: '34px', height: '34px', borderRadius: '50%', background: isCompany ? '#eef2f7' : '#f0eeea', border: 'none', fontSize: '16px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {uploading ? '⏳' : '📎'}
                   </button>
                   <input ref={fileInputRef} type="file" accept="image/*,.pdf,.zip,.doc,.docx,.xls,.xlsx,.pptx" onChange={uploadFile} style={{ display: 'none' }} />
                   <input value={content} onChange={e => setContent(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (selectedDM ? sendDM() : sendGroupMessage())}
                     placeholder="メッセージを入力... (Enterで送信)"
-                    style={{ flex: 1, padding: '8px 12px', borderRadius: '20px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', background: '#f5f4f0' }}
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '20px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', background: isCompany ? '#f0f2f5' : '#f5f4f0' }}
                   />
-                  <button onClick={selectedDM ? sendDM : sendGroupMessage} style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#1D9E75', color: '#fff', border: 'none', fontSize: '16px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↑</button>
+                  <button onClick={selectedDM ? sendDM : sendGroupMessage} style={{ width: '34px', height: '34px', borderRadius: '50%', background: msgBg, color: '#fff', border: 'none', fontSize: '16px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↑</button>
                 </div>
               </>
             )}
@@ -409,7 +418,7 @@ function MessagesContent() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button onClick={() => setShowNewGroup(false)} style={{ padding: '8px 18px', borderRadius: '10px', fontSize: '13px', border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67', background: 'none', cursor: 'pointer' }}>キャンセル</button>
-              <button onClick={createGroup} style={{ padding: '8px 22px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: '#1D9E75', color: '#fff', border: 'none', cursor: 'pointer' }}>作成する</button>
+              <button onClick={createGroup} style={{ padding: '8px 22px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: accent, color: '#fff', border: 'none', cursor: 'pointer' }}>作成する</button>
             </div>
           </div>
         </div>
@@ -420,7 +429,7 @@ function MessagesContent() {
 
 export default function MessagesPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f4f0' }}><div style={{ color: '#6b6b67' }}>読み込み中...</div></div>}>
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ color: '#6b6b67' }}>読み込み中...</div></div>}>
       <MessagesContent />
     </Suspense>
   )
