@@ -88,17 +88,13 @@ export default function Navbar() {
 
             <Link href="/messages" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>💬</Link>
 
-            {/* ハンバーガーメニュー */}
+            {/* メニュー */}
             <button onClick={() => setMenuOpen(!menuOpen)} style={{
               background: 'none', border: '0.5px solid rgba(0,0,0,0.15)',
-              width: '36px', height: '36px', borderRadius: '8px',
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: '4px', cursor: 'pointer', flexShrink: 0
-            }}>
-              <div style={{ width: '16px', height: '2px', background: '#1a1a18', borderRadius: '1px' }} />
-              <div style={{ width: '16px', height: '2px', background: '#1a1a18', borderRadius: '1px' }} />
-              <div style={{ width: '16px', height: '2px', background: '#1a1a18', borderRadius: '1px' }} />
-            </button>
+              padding: '6px 10px', borderRadius: '8px',
+              cursor: 'pointer', flexShrink: 0, fontSize: '13px',
+              color: '#1a1a18', fontFamily: 'inherit', fontWeight: '600'
+            }}>メニュー</button>
           </div>
 
           {/* ドロップダウンメニュー */}
