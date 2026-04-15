@@ -34,7 +34,7 @@ export default function Home() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data } = await supabase
       .from('ideas')
-      .select('*, profiles(id, username, full_name, is_company, company_name, avatar_url, is_private)')
+      .select('*, profiles(id, username, full_name, is_company, company_name, avatar_url, is_private), likes(count)')
       .order('created_at', { ascending: false })
     if (data) {
       let filtered = data
@@ -49,7 +49,7 @@ export default function Home() {
       } else {
         filtered = data.filter(idea => !idea.profiles?.is_private)
       }
-      setIdeas(filtered)
+      setIdeas(filtered.map(i => ({ ...i, like_count: i.likes?.[0]?.count || 0 })))
     }
     setLoading(false)
   }
@@ -69,7 +69,7 @@ export default function Home() {
 
   const sorted = [...filtered].sort((a, b) => {
     if (sort === 'new') return new Date(b.created_at) - new Date(a.created_at)
-    if (sort === 'popular') return (b.view_count || 0) - (a.view_count || 0)
+    if (sort === 'popular') return (b.like_count || b.view_count || 0) - (a.like_count || a.view_count || 0)
     return 0
   })
 
@@ -121,6 +121,7 @@ export default function Home() {
               {profile?.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : name[0]}
             </div>
             <span style={{ fontSize: '11px', color: '#6b6b67' }}>{name}</span>
+            {profile?.is_verified && <span style={{ fontSize: '10px' }} title="認証済み法人">✅</span>}
           </div>
           {idea.category && <span style={{ fontSize: '11px', background: '#f0eeea', padding: '2px 8px', borderRadius: '20px', color: '#6b6b67' }}>{idea.category.split(', ')[0]}</span>}
         </div>
@@ -163,7 +164,7 @@ export default function Home() {
 
         {/* 未ログイン時：2分岐セクション */}
         {!user && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '12px', marginBottom: '1.5rem' }}>
             <div style={{ background: '#fff', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.75rem' }}>
               <div style={{ fontSize: '24px', marginBottom: '10px' }}>🎓</div>
               <div style={{ fontSize: '17px', fontWeight: '700', color: '#1a1a18', marginBottom: '8px' }}>学生・起業家の方へ</div>
@@ -230,7 +231,7 @@ export default function Home() {
               <div style={{ fontWeight: '600', marginBottom: '6px' }}>まだアイデアがありません</div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '14px', alignItems: 'start' }}>
               {sorted.map(idea => <IdeaCard key={idea.id} idea={idea} />)}
             </div>
           )}
