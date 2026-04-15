@@ -40,8 +40,10 @@ function CompanyIdeasContent() {
 
   async function getIdeas() {
     const { data } = await supabase.from('ideas')
-      .select('*, profiles(id, full_name, username, avatar_url, is_company, company_name)')
-      .order('created_at', { ascending: false })
+        .select('*, profiles(id, full_name, username, bio, avatar_url, tags, location, is_verified)')
+        .eq('is_hidden', false)
+        .eq('is_draft', false)
+        .order('created_at', { ascending: false })
     setIdeas(data || [])
   }
 
@@ -56,7 +58,7 @@ function CompanyIdeasContent() {
   }
 
   async function openIdea(idea) {
-    const { data } = await supabase.from('ideas').select('*, profiles(id, full_name, username, bio, avatar_url, tags, location)').eq('id', idea.id).single()
+    const { data } = await supabase.from('ideas').select('*, profiles(id, full_name, username, bio, avatar_url, tags, location, is_verified)').eq('id', idea.id).single()
     setSelected(data)
   }
 
@@ -168,7 +170,10 @@ function CompanyIdeasContent() {
                   {selected.profiles?.avatar_url ? <img src={selected.profiles.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (selected.profiles?.full_name || '?')[0]}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a18' }}>{selected.profiles?.full_name || selected.profiles?.username}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a18' }}>{selected.profiles?.full_name || selected.profiles?.username}</div>
+                    {selected.profiles?.is_verified && <span style={{ fontSize: '10px', background: '#d8f2ea', color: '#0d6e50', padding: '2px 7px', borderRadius: '20px', fontWeight: '600' }}>✅ 認証済み</span>}
+                  </div>
                   {selected.profiles?.bio && <div style={{ fontSize: '11px', color: '#6b6b67' }}>{selected.profiles.bio}</div>}
                 </div>
               </div>
