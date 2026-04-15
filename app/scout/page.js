@@ -1,9 +1,8 @@
- 'use client'
+'use client'
 import { Suspense } from 'react'
 import { useState, useEffect } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import CompanyNavbar from '../../components/CompanyNavbar'
 
 function ScoutContent() {
@@ -12,11 +11,9 @@ function ScoutContent() {
   const [idea, setIdea] = useState(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [form, setForm] = useState({
-    offer_type: '共同開発',
-    content: '',
-    conditions: ''
-  })
+  const [ndaAgreed, setNdaAgreed] = useState(false)
+  const [showNda, setShowNda] = useState(false)
+  const [form, setForm] = useState({ offer_type: '共同開発', content: '', conditions: '' })
   const router = useRouter()
   const searchParams = useSearchParams()
   const ideaId = searchParams.get('idea')
@@ -32,8 +29,7 @@ function ScoutContent() {
     if (!profile?.is_company) { router.push('/'); return }
     setProfile(profile)
     if (ideaId) {
-      const { data: idea } = await supabase
-        .from('ideas')
+      const { data: idea } = await supabase.from('ideas')
         .select('*, profiles(id, full_name, username, company_name, is_company)')
         .eq('id', ideaId).single()
       setIdea(idea)
@@ -77,16 +73,9 @@ function ScoutContent() {
 
     if (error) { alert('エラー: ' + error.message); setSending(false); return }
 
-    await supabase.from('notifications').insert({
-      user_id: idea.user_id,
-      from_id: user.id,
-      type: 'scout',
-      idea_id: ideaId
-    })
-
-    await supabase.from('profiles').update({
-      scout_count_this_month: (count + 1)
-    }).eq('id', user.id)
+    await supabase.from('notifications').insert({ user_id: idea.user_id, from_id: user.id, type: 'scout', idea_id: ideaId })
+    await supabase.from('profiles').update({ scout_count_this_month: (count + 1) }).eq('id', user.id)
+    await supabase.from('nda_agreements').upsert({ user_id: user.id, target_idea_id: ideaId })
 
     router.push('/company/scouts')
   }
@@ -167,28 +156,60 @@ function ScoutContent() {
             </div>
           </div>
 
+          <div style={{ background: '#f5f4f0', borderRadius: '12px', padding: '14px', marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={ndaAgreed} onChange={e => setNdaAgreed(e.target.checked)}
+                style={{ marginTop: '2px', flexShrink: 0, width: '16px', height: '16px' }} />
+              <span style={{ fontSize: '12px', color: '#6b6b67', lineHeight: '1.7' }}>
+                このアイデアの情報を第三者に開示せず、秘密保持義務を遵守することに同意します。スカウト送信をもって
+                <button type="button" onClick={() => setShowNda(true)} style={{ background: 'none', border: 'none', color: '#1D9E75', fontWeight: '600', cursor: 'pointer', padding: '0 3px', fontSize: '12px' }}>NDA（秘密保持契約）</button>
+                に同意したものとみなされます。
+              </span>
+            </label>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
             <button type="button" onClick={() => router.push('/company/scouts')} style={{
               padding: '10px 20px', borderRadius: '10px', fontSize: '14px',
-              border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67',
-              background: 'none', cursor: 'pointer'
+              border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67', background: 'none', cursor: 'pointer'
             }}>キャンセル</button>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button type="button" onClick={() => router.push('/company/plan')} style={{
                 padding: '10px 16px', borderRadius: '10px', fontSize: '13px',
-                border: '0.5px solid #1a3a5c', color: '#1a3a5c',
-                background: 'none', cursor: 'pointer'
+                border: '0.5px solid #1a3a5c', color: '#1a3a5c', background: 'none', cursor: 'pointer'
               }}>プランを確認</button>
-              <button type="submit" disabled={sending} style={{
+              <button type="submit" disabled={sending || !ndaAgreed} style={{
                 background: '#1a3a5c', color: '#fff', border: 'none',
-                padding: '10px 28px', borderRadius: '10px', fontSize: '14px',
-                fontWeight: '600', cursor: sending ? 'not-allowed' : 'pointer',
-                opacity: sending ? 0.7 : 1
+                padding: '10px 28px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+                cursor: (sending || !ndaAgreed) ? 'not-allowed' : 'pointer',
+                opacity: (sending || !ndaAgreed) ? 0.6 : 1
               }}>{sending ? '送信中...' : '🏢 スカウトを送信する'}</button>
             </div>
           </div>
         </form>
       </div>
+
+      {/* NDA モーダル */}
+      {showNda && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 100 }}
+          onClick={e => e.target === e.currentTarget && setShowNda(false)}>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '520px', maxHeight: '80vh', overflow: 'auto' }}>
+            <div style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a18', marginBottom: '1rem' }}>秘密保持契約（NDA）</div>
+            <div style={{ fontSize: '13px', color: '#6b6b67', lineHeight: '1.9' }}>
+              <p style={{ marginBottom: '10px' }}>スカウトを送信することで、以下の秘密保持義務に同意したものとみなされます。</p>
+              <p style={{ marginBottom: '8px', fontWeight: '600', color: '#1a1a18' }}>第1条（秘密情報の定義）</p>
+              <p style={{ marginBottom: '10px' }}>本契約において「秘密情報」とは、IdeaVaultを通じて開示されるアイデア、ビジネスプラン、技術情報、財務情報その他一切の情報を指します。</p>
+              <p style={{ marginBottom: '8px', fontWeight: '600', color: '#1a1a18' }}>第2条（秘密保持義務）</p>
+              <p style={{ marginBottom: '10px' }}>受信者は秘密情報を第三者に開示・漏洩してはならず、スカウトの評価目的以外に使用してはなりません。</p>
+              <p style={{ marginBottom: '8px', fontWeight: '600', color: '#1a1a18' }}>第3条（禁止事項）</p>
+              <p style={{ marginBottom: '10px' }}>秘密情報を基にした模倣品・類似サービスの開発、競合他社への情報提供を禁止します。</p>
+              <p style={{ marginBottom: '8px', fontWeight: '600', color: '#1a1a18' }}>第4条（有効期間）</p>
+              <p style={{ marginBottom: '10px' }}>本契約は同意日から3年間有効とします。</p>
+            </div>
+            <button onClick={() => setShowNda(false)} style={{ width: '100%', padding: '10px', background: '#1a3a5c', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginTop: '12px' }}>閉じる</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

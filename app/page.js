@@ -335,9 +335,10 @@ export default function Home() {
 
             {/* フッター */}
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '10px' }}>
-              <Link href="/terms" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>利用規約</Link>
-              <Link href="/privacy" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>プライバシーポリシー</Link>
-              <Link href="/reset-password" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>パスワードリセット</Link>
+                <Link href="/terms" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>利用規約</Link>
+                <Link href="/privacy" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>プライバシーポリシー</Link>
+                <Link href="/stories" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>成功事例</Link>
+                <Link href="/reset-password" style={{ fontSize: '12px', color: '#a0a09c', textDecoration: 'none' }}>パスワードリセット</Link>
             </div>
             <div style={{ fontSize: '11px', color: '#a0a09c', textAlign: 'center' }}>© 2025 IdeaVault. All rights reserved.</div>
           </div>
