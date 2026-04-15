@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'DdJVfVmzWTuH43WQuAlRbPBcnRrb2zjDk_-hmET9NpA',
+    google: 'QuxsjlYB4bzPqlIEjNBSgReB61Rcg3o3j4ryUANe0Ug',
   },
   alternates: {
     canonical: 'https://ideavault-silk.vercel.app',
