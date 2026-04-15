@@ -9,6 +9,9 @@ export default function ScoutsPage() {
   const [scouts, setScouts] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('received')
+  const [showReport, setShowReport] = useState(false)
+  const [reportingScout, setReportingScout] = useState(null)
+  const [reportSending, setReportSending] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -49,6 +52,25 @@ export default function ScoutsPage() {
     await getScouts(user.id)
   }
 
+  async function reportAgreement(scout) {
+    setReportSending(true)
+    await supabase.from('scouts').update({
+      status: 'agreed',
+      updated_at: new Date().toISOString()
+    }).eq('id', scout.id)
+    await supabase.from('notifications').insert({
+      user_id: scout.from_company_id,
+      from_id: user.id,
+      type: 'scout_agreed',
+      idea_id: scout.idea_id
+    })
+    setReportSending(false)
+    setShowReport(false)
+    setReportingScout(null)
+    await getScouts(user.id)
+    alert('合意を報告しました。成功手数料についてはメッセージにてご連絡します。')
+  }
+
   function formatDate(ts) {
     const d = new Date(ts)
     return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
@@ -57,7 +79,8 @@ export default function ScoutsPage() {
   const STATUS = {
     pending:  { label: '返答待ち', bg: '#fdecd4', color: '#8a4f0a' },
     accepted: { label: '承諾済み', bg: '#d8f2ea', color: '#0d6e50' },
-    rejected: { label: '辞退済み', bg: '#eeecea', color: '#5a5a56' }
+    rejected: { label: '辞退済み', bg: '#eeecea', color: '#5a5a56' },
+    agreed:   { label: '合意成立🎉', bg: '#E1F5EE', color: '#0F6E56' }
   }
 
   const filtered = tab === 'received' ? scouts : scouts.filter(s => s.status === 'accepted')
@@ -158,10 +181,21 @@ export default function ScoutsPage() {
               )}
 
               {scout.status === 'accepted' && (
-                <button onClick={() => router.push(`/messages?to=${scout.from_company_id}`)} style={{
-                  width: '100%', padding: '11px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-                  background: '#1D9E75', color: '#fff', border: 'none', cursor: 'pointer'
-                }}>💬 メッセージを開く</button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => router.push(`/messages?to=${scout.from_company_id}`)} style={{
+                    flex: 1, padding: '10px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+                    background: '#1D9E75', color: '#fff', border: 'none', cursor: 'pointer'
+                  }}>💬 メッセージを開く</button>
+                  <button onClick={() => { setReportingScout(scout); setShowReport(true) }} style={{
+                    padding: '10px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
+                    background: '#fff', color: '#1a3a5c', border: '1.5px solid #1a3a5c', cursor: 'pointer', whiteSpace: 'nowrap'
+                  }}>🤝 合意を報告</button>
+                </div>
+              )}
+              {scout.status === 'agreed' && (
+                <div style={{ textAlign: 'center', padding: '10px', background: '#E1F5EE', borderRadius: '10px', fontSize: '13px', fontWeight: '700', color: '#0F6E56' }}>
+                  🎉 合意成立！おめでとうございます
+                </div>
               )}
             </div>
           )
