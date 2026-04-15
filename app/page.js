@@ -18,23 +18,46 @@ export default function Home() {
   const supabase = createClient()
 
   useEffect(() => {
-    getUser()
-    getIdeas()
-    fetchCategories()
+    init()
   }, [])
 
-  async function getUser() {
+  async function init() {
     const { data: { user } } = await supabase.auth.getUser()
     setUser(user)
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('is_company').eq('id', user.id).single()
+      if (profile?.is_company) {
+        window.location.href = '/company/dashboard'
+        return
+      }
+    }
+    await getIdeas()
+    await fetchCategories()
   }
 
+  
+
   async function getIdeas() {
+    const { data: { user } } = await supabase.auth.getUser()
     const { data } = await supabase
       .from('ideas')
-      .select('*, profiles(id, username, full_name, is_company, company_name, avatar_url)')
+      .select('*, profiles(id, username, full_name, is_company, company_name, avatar_url, is_private)')
       .order('created_at', { ascending: false })
     if (data) {
-      setIdeas(data)
+      let filtered = data
+      if (user) {
+        const { data: follows } = await supabase
+          .from('follows').select('following_id').eq('follower_id', user.id)
+        const followingIds = new Set(follows?.map(f => f.following_id) || [])
+        filtered = data.filter(idea => {
+          if (!idea.profiles?.is_private) return true
+          if (idea.user_id === user.id) return true
+          return followingIds.has(idea.user_id)
+        })
+      } else {
+        filtered = data.filter(idea => !idea.profiles?.is_private)
+      }
+      setIdeas(filtered)
     }
     setLoading(false)
   }
