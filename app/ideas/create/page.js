@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -8,21 +8,53 @@ import Navbar from '../../../components/Navbar'
 export default function NewIdeaPage() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [draftSaving, setDraftSaving] = useState(false)
+  const [draftSaved, setDraftSaved] = useState(false)
+  const [draftId, setDraftId] = useState(null)
   const [categories, setCategories] = useState([])
   const [form, setForm] = useState({
-    title: '', status: 'アイデア', category: [],
+    title: '', status: 'アイデア', category: [], visibility: 'public',
     concept: '', features: '', target: '',
     revenue: '', edge: '', launch: '', memo: ''
   })
+  const autoSaveTimer = useRef(null)
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => { checkUser(); fetchCategories() }, [])
 
+  // 自動保存：フォーム変更から3秒後に下書き保存
+  useEffect(() => {
+    if (!user || !form.title.trim()) return
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => { saveDraft(true) }, 3000)
+    return () => clearTimeout(autoSaveTimer.current)
+  }, [form, user])
+
   async function checkUser() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
     setUser(user)
+    // 既存の下書きを読み込む
+    const { data } = await supabase.from('ideas')
+      .select('*').eq('user_id', user.id).eq('is_draft', true)
+      .order('draft_saved_at', { ascending: false }).limit(1).single()
+    if (data) {
+      setDraftId(data.id)
+      setForm({
+        title: data.title || '',
+        status: data.status || 'アイデア',
+        category: data.category ? data.category.split(', ').filter(Boolean) : [],
+        visibility: data.visibility || 'public',
+        concept: data.concept || '',
+        features: data.features || '',
+        target: data.target || '',
+        revenue: data.revenue || '',
+        edge: data.edge || '',
+        launch: data.launch || '',
+        memo: data.memo || ''
+      })
+    }
   }
 
   async function fetchCategories() {
@@ -33,12 +65,30 @@ export default function NewIdeaPage() {
   function toggleCategory(cat) {
     setForm(prev => {
       const current = prev.category
-      if (current.includes(cat)) {
-        return { ...prev, category: current.filter(c => c !== cat) }
-      } else {
-        return { ...prev, category: [...current, cat] }
-      }
+      if (current.includes(cat)) return { ...prev, category: current.filter(c => c !== cat) }
+      return { ...prev, category: [...current, cat] }
     })
+  }
+
+  async function saveDraft(auto = false) {
+    if (!user || !form.title.trim()) return
+    if (!auto) setDraftSaving(true)
+    const payload = {
+      user_id: user.id,
+      ...form,
+      category: form.category.join(', '),
+      is_draft: true,
+      draft_saved_at: new Date().toISOString()
+    }
+    if (draftId) {
+      await supabase.from('ideas').update(payload).eq('id', draftId)
+    } else {
+      const { data } = await supabase.from('ideas').insert(payload).select().single()
+      if (data) setDraftId(data.id)
+    }
+    setDraftSaved(true)
+    setTimeout(() => setDraftSaved(false), 2000)
+    if (!auto) setDraftSaving(false)
   }
 
   async function handleSubmit(e) {
@@ -46,14 +96,31 @@ export default function NewIdeaPage() {
     if (!form.title.trim()) { alert('サービス名を入力してください'); return }
     setLoading(true)
 
-    const { error } = await supabase.from('ideas').insert({
+    const payload = {
       user_id: user.id,
       ...form,
-      category: form.category.join(', ')
-    })
+      category: form.category.join(', '),
+      is_draft: false,
+      is_hidden: false
+    }
 
-    if (error) { alert('エラーが発生しました: ' + error.message); setLoading(false); return }
+    if (draftId) {
+      // 下書きを本投稿に変換
+      const { error } = await supabase.from('ideas').update(payload).eq('id', draftId)
+      if (error) { alert('エラーが発生しました: ' + error.message); setLoading(false); return }
+    } else {
+      const { error } = await supabase.from('ideas').insert(payload)
+      if (error) { alert('エラーが発生しました: ' + error.message); setLoading(false); return }
+    }
     router.push('/')
+  }
+
+  async function deleteDraft() {
+    if (!draftId) return
+    if (!confirm('下書きを削除しますか？')) return
+    await supabase.from('ideas').delete().eq('id', draftId)
+    setDraftId(null)
+    setForm({ title: '', status: 'アイデア', category: [], visibility: 'public', concept: '', features: '', target: '', revenue: '', edge: '', launch: '', memo: '' })
   }
 
   const field = (label, name, placeholder, rows = 4) => (
@@ -62,12 +129,7 @@ export default function NewIdeaPage() {
       <textarea
         name={name} value={form[name]} onChange={e => setForm({ ...form, [e.target.name]: e.target.value })}
         placeholder={placeholder} rows={rows}
-        style={{
-          width: '100%', padding: '9px 12px', borderRadius: '10px',
-          border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px',
-          outline: 'none', resize: 'vertical', lineHeight: '1.7',
-          fontFamily: 'inherit', boxSizing: 'border-box'
-        }}
+        style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', resize: 'vertical', lineHeight: '1.7', fontFamily: 'inherit', boxSizing: 'border-box' }}
       />
     </div>
   )
@@ -76,7 +138,21 @@ export default function NewIdeaPage() {
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
       <Navbar />
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '2rem 1.25rem' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '1.5rem', letterSpacing: '-0.5px' }}>新しい企画を投稿</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '8px' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', letterSpacing: '-0.5px' }}>新しい企画を投稿</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {draftSaved && <span style={{ fontSize: '12px', color: '#1D9E75', fontWeight: '600' }}>✓ 自動保存済み</span>}
+            {draftId && <span style={{ fontSize: '11px', color: '#a0a09c' }}>下書きあり</span>}
+          </div>
+        </div>
+
+        {/* 下書きバナー */}
+        {draftId && (
+          <div style={{ background: '#fdecd4', borderRadius: '12px', padding: '12px 16px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '13px', color: '#8a4f0a', fontWeight: '600' }}>📝 下書きを読み込みました</div>
+            <button onClick={deleteDraft} style={{ fontSize: '12px', color: '#c04020', background: 'none', border: 'none', cursor: 'pointer' }}>下書きを削除</button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '1rem' }}>
@@ -86,20 +162,14 @@ export default function NewIdeaPage() {
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>
                 サービス名 <span style={{ color: '#c04020' }}>*</span>
               </label>
-              <input
-                value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+              <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
                 placeholder="例：AIレシピアプリ" required
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-              />
+                style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>ステータス</label>
-              <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{
-                width: '100%', padding: '9px 12px', borderRadius: '10px',
-                border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px',
-                background: '#fff', boxSizing: 'border-box'
-              }}>
+              <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', background: '#fff', boxSizing: 'border-box' }}>
                 {['アイデア','検討中','進行中','完成','一時停止'].map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
@@ -143,8 +213,7 @@ export default function NewIdeaPage() {
                     border: `1px solid ${form.category.includes(c) ? '#1D9E75' : 'rgba(0,0,0,0.15)'}`,
                     background: form.category.includes(c) ? '#E1F5EE' : '#fff',
                     color: form.category.includes(c) ? '#0d6e50' : '#6b6b67',
-                    fontWeight: form.category.includes(c) ? '600' : '400',
-                    transition: 'all 0.1s'
+                    fontWeight: form.category.includes(c) ? '600' : '400'
                   }}>{c}</button>
                 ))}
               </div>
@@ -162,20 +231,20 @@ export default function NewIdeaPage() {
             {field('メモ＆補足', 'memo', '競合調査、懸念点、次のアクションなど', 4)}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <Link href="/" style={{
-              padding: '10px 20px', borderRadius: '10px', fontSize: '14px',
-              border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67',
-              textDecoration: 'none', display: 'inline-block'
-            }}>キャンセル</Link>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+            <Link href="/" style={{ padding: '10px 20px', borderRadius: '10px', fontSize: '14px', border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67', textDecoration: 'none', display: 'inline-block' }}>キャンセル</Link>
+            <button type="button" onClick={() => saveDraft(false)} disabled={draftSaving || !form.title.trim()} style={{
+              padding: '10px 20px', borderRadius: '10px', fontSize: '14px', fontWeight: '600',
+              border: '0.5px solid #1D9E75', color: '#1D9E75', background: '#fff',
+              cursor: draftSaving || !form.title.trim() ? 'not-allowed' : 'pointer',
+              opacity: !form.title.trim() ? 0.5 : 1
+            }}>{draftSaving ? '保存中...' : '下書き保存'}</button>
             <button type="submit" disabled={loading} style={{
               background: '#1D9E75', color: '#fff', border: 'none',
               padding: '10px 28px', borderRadius: '10px', fontSize: '14px',
               fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.7 : 1
-            }}>
-              {loading ? '投稿中...' : '投稿する'}
-            </button>
+            }}>{loading ? '投稿中...' : '投稿する'}</button>
           </div>
         </form>
       </div>
