@@ -77,6 +77,23 @@ function ScoutContent() {
     await supabase.from('profiles').update({ scout_count_this_month: (count + 1) }).eq('id', user.id)
     await supabase.from('nda_agreements').upsert({ user_id: user.id, target_idea_id: ideaId })
 
+    // アイデア投稿者にスカウトメール通知
+    try {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: idea.user_id,
+          type: 'scout',
+          data: {
+            ideaTitle: idea.title,
+            companyName: profile?.company_name || profile?.full_name || '企業',
+            content: form.content
+          }
+        })
+      })
+    } catch (e) { console.error('メール送信エラー:', e) }
+
     router.push('/company/scouts')
   }
 
