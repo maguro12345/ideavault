@@ -72,6 +72,7 @@ export default function Navbar() {
             }}>＋ 投稿</Link>
 
             <Link href="/scouts" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>📨</Link>
+            <Link href="/watchlist" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }} title="ウォッチリスト">👁</Link>
             <Link href="/search" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>🔍</Link>
 
             <div style={{ position: 'relative' }}>
@@ -110,6 +111,7 @@ export default function Navbar() {
               }}>
                 {[
                   { href: '/mypage', label: '👤 マイページ' },
+                  { href: '/watchlist', label: '👁 ウォッチリスト' },
                   { href: '/settings', label: '⚙️ 設定' },
                   { href: '/scouts', label: '📨 スカウト' },
                   { href: '/search', label: '🔍 検索' },
