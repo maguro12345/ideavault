@@ -35,9 +35,7 @@ export default function IdeaDetailPage() {
   const params = useParams()
   const supabase = createClient()
 
-  useEffect(() => {
-    init()
-  }, [])
+  useEffect(() => { init() }, [])
 
   async function init() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -60,31 +58,23 @@ export default function IdeaDetailPage() {
 
   async function getIdea() {
     const { data } = await supabase.from('ideas')
-      .select('*, profiles(id, username, full_name, bio, is_company, company_name, avatar_url)')
+      .select('*, profiles(id, username, full_name, bio, is_company, company_name, avatar_url, is_verified)')
       .eq('id', params.id).single()
     setIdea(data)
     const { count: lc } = await supabase.from('likes').select('*', { count: 'exact', head: true }).eq('idea_id', params.id)
     setLikeCount(lc || 0)
     const { count: wc } = await supabase.from('watches').select('*', { count: 'exact', head: true }).eq('idea_id', params.id)
     setWatchCount(wc || 0)
-    setLoading(false)
-    const { data: decks } = await supabase.from('pitch_decks').select('*').eq('user_id', data?.user_id || '').order('created_at', { ascending: false })
+    const { data: decks } = await supabase.from('pitch_decks').select('*').eq('idea_id', params.id).order('created_at', { ascending: false })
     setPitchDecks(decks || [])
+    setLoading(false)
   }
 
   async function getComments() {
     const { data } = await supabase.from('idea_comments')
       .select('*, profiles(id, full_name, username, avatar_url, role)')
-      .eq('idea_id', params.id)
-      .order('created_at', { ascending: true })
+      .eq('idea_id', params.id).order('created_at', { ascending: true })
     setComments(data || [])
-  }
-
-  async function getPitchDecks() {
-    const { data } = await supabase.from('pitch_decks')
-      .select('*').eq('user_id', idea?.user_id || '')
-      .order('created_at', { ascending: false })
-    setPitchDecks(data || [])
   }
 
   async function getProgress() {
@@ -96,16 +86,11 @@ export default function IdeaDetailPage() {
   async function getViews() {
     const { data } = await supabase.from('idea_views')
       .select('*, profiles(id, full_name, username, avatar_url, is_company, company_name)')
-      .eq('idea_id', params.id)
-      .order('created_at', { ascending: false })
-      .limit(50)
+      .eq('idea_id', params.id).order('created_at', { ascending: false }).limit(50)
     const uniqueViews = []
     const seen = new Set()
     for (const v of data || []) {
-      if (v.viewer_id && !seen.has(v.viewer_id)) {
-        seen.add(v.viewer_id)
-        uniqueViews.push(v)
-      }
+      if (v.viewer_id && !seen.has(v.viewer_id)) { seen.add(v.viewer_id); uniqueViews.push(v) }
     }
     setViews(uniqueViews)
   }
@@ -150,10 +135,7 @@ export default function IdeaDetailPage() {
   async function postComment() {
     if (!commentContent.trim() || !user) return
     setPostingComment(true)
-    await supabase.from('idea_comments').insert({
-      idea_id: params.id, user_id: user.id, content: commentContent.trim(),
-      is_mentor: userProfile?.role === 'mentor'
-    })
+    await supabase.from('idea_comments').insert({ idea_id: params.id, user_id: user.id, content: commentContent.trim(), is_mentor: userProfile?.role === 'mentor' })
     setCommentContent('')
     await getComments()
     setPostingComment(false)
@@ -194,7 +176,6 @@ export default function IdeaDetailPage() {
     '完成':      { bg: '#e4f2d8', color: '#376b10' },
     '一時停止':  { bg: '#eeecea', color: '#5a5a56' },
   }
-
   const STAGES = ['アイデア', '検証中', 'MVP開発', 'ベータ版', 'ローンチ', '成長期']
 
   function formatDate(ts) {
@@ -300,17 +281,13 @@ export default function IdeaDetailPage() {
             <button onClick={toggleLike} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: `1px solid ${liked ? '#e74c3c' : 'rgba(0,0,0,0.15)'}`, background: liked ? '#fff0f0' : '#fff', color: liked ? '#e74c3c' : '#6b6b67', cursor: 'pointer' }}>
               {liked ? '❤️' : '🤍'} {likeCount}
             </button>
-
             <button onClick={toggleWatch} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: `1px solid ${watched ? '#BA7517' : 'rgba(0,0,0,0.15)'}`, background: watched ? '#faeeda' : '#fff', color: watched ? '#BA7517' : '#6b6b67', cursor: 'pointer' }}>
               {watched ? '👁️' : '👁'} ウォッチ {watchCount}
             </button>
-
             <button onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(idea.title + ' - IdeaVault')}&url=${encodeURIComponent(window.location.href)}`, '_blank')}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: '1px solid rgba(0,0,0,0.15)', background: '#fff', color: '#1a1a18', cursor: 'pointer' }}>𝕏 シェア</button>
-
             <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert('URLをコピーしました！') }}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: '1px solid rgba(0,0,0,0.15)', background: '#fff', color: '#1a1a18', cursor: 'pointer' }}>🔗 コピー</button>
-
             {user && !isOwner && (
               <button onClick={() => setShowMessage(true)} style={{ background: '#1D9E75', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>✉️ メッセージ</button>
             )}
@@ -367,31 +344,27 @@ export default function IdeaDetailPage() {
               <button onClick={() => setShowProgress(!showProgress)} style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', background: '#1D9E75', color: '#fff', border: 'none', cursor: 'pointer' }}>＋ 追加</button>
             )}
           </div>
-
           {showProgress && isOwner && (
             <div style={{ background: '#f5f4f0', borderRadius: '12px', padding: '14px', marginBottom: '12px' }}>
-              <div style={{ marginBottom: '8px' }}>
-                <select value={progressForm.stage} onChange={e => setProgressForm({ ...progressForm, stage: e.target.value })} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', background: '#fff', marginBottom: '8px' }}>
-                  {STAGES.map(s => <option key={s}>{s}</option>)}
-                </select>
-                <input value={progressForm.title} onChange={e => setProgressForm({ ...progressForm, title: e.target.value })} placeholder="タイトル（例：ランディングページ完成）"
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }} />
-                <textarea value={progressForm.content} onChange={e => setProgressForm({ ...progressForm, content: e.target.value })} placeholder="詳細（任意）" rows={2}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+              <select value={progressForm.stage} onChange={e => setProgressForm({ ...progressForm, stage: e.target.value })} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', background: '#fff', marginBottom: '8px' }}>
+                {STAGES.map(s => <option key={s}>{s}</option>)}
+              </select>
+              <input value={progressForm.title} onChange={e => setProgressForm({ ...progressForm, title: e.target.value })} placeholder="タイトル（例：ランディングページ完成）"
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }} />
+              <textarea value={progressForm.content} onChange={e => setProgressForm({ ...progressForm, content: e.target.value })} placeholder="詳細（任意）" rows={2}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', marginTop: '8px' }}>
                 <button onClick={() => setShowProgress(false)} style={{ padding: '6px 14px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', background: '#fff', fontSize: '12px', cursor: 'pointer', color: '#6b6b67' }}>キャンセル</button>
                 <button onClick={addProgress} style={{ padding: '6px 14px', borderRadius: '8px', background: '#1D9E75', color: '#fff', border: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>追加</button>
               </div>
             </div>
           )}
-
           {progress.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '1.5rem', color: '#a0a09c', fontSize: '13px' }}>まだ進捗はありません</div>
           ) : (
             <div style={{ position: 'relative', paddingLeft: '20px' }}>
               <div style={{ position: 'absolute', left: '6px', top: 0, bottom: 0, width: '2px', background: '#E1F5EE' }} />
-              {progress.map((p, i) => (
+              {progress.map(p => (
                 <div key={p.id} style={{ position: 'relative', marginBottom: '16px' }}>
                   <div style={{ position: 'absolute', left: '-17px', top: '4px', width: '10px', height: '10px', borderRadius: '50%', background: '#1D9E75', border: '2px solid #fff' }} />
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '3px' }}>
@@ -406,7 +379,7 @@ export default function IdeaDetailPage() {
           )}
         </div>
 
-        {/* ピッチデック */}
+        {/* ピッチデック（あるときのみ表示） */}
         {pitchDecks.length > 0 && (
           <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem', marginBottom: '12px' }}>
             <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18', marginBottom: '12px' }}>📊 ピッチデック</div>
@@ -426,35 +399,7 @@ export default function IdeaDetailPage() {
                     )}
                     <div style={{ padding: '10px 12px' }}>
                       <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{deck.title}</div>
-                      {deck.description && <div style={{ fontSize: '11px', color: '#6b6b67', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{deck.description}</div>}
                       <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: '600', marginTop: '4px' }}>開いて見る →</div>
-                    </div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ピッチデック（あるときのみ表示） */}
-        {pitchDecks.length > 0 && (
-          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem', marginBottom: '12px' }}>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18', marginBottom: '12px' }}>📊 ピッチデック</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-              {pitchDecks.map(deck => (
-                <a key={deck.id} href={deck.file_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                  <div style={{ background: '#f5f4f0', borderRadius: '12px', overflow: 'hidden', border: '0.5px solid rgba(0,0,0,0.08)' }}>
-                    {deck.thumbnail_url ? (
-                      <img src={deck.thumbnail_url} alt={deck.title} style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }} />
-                    ) : (
-                      <div style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '32px' }}>{deck.file_type === 'pdf' ? '📄' : '📊'}</span>
-                        <span style={{ fontSize: '10px', color: '#a0a09c', textTransform: 'uppercase', fontWeight: '600' }}>{deck.file_type}</span>
-                      </div>
-                    )}
-                    <div style={{ padding: '10px 12px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{deck.title}</div>
-                      <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: '600' }}>開いて見る →</div>
                     </div>
                   </div>
                 </a>
@@ -466,7 +411,6 @@ export default function IdeaDetailPage() {
         {/* コメント */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem' }}>
           <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18', marginBottom: '12px' }}>💬 コメント・フィードバック</div>
-
           {user ? (
             <div style={{ marginBottom: '16px' }}>
               <textarea value={commentContent} onChange={e => setCommentContent(e.target.value)} placeholder={userProfile?.role === 'mentor' ? 'メンターとしてフィードバックを送る...' : 'コメントを入力...'} rows={3}
@@ -486,7 +430,6 @@ export default function IdeaDetailPage() {
               <Link href="/login" style={{ fontSize: '13px', color: '#1D9E75', fontWeight: '600', textDecoration: 'none' }}>ログイン・登録 →</Link>
             </div>
           )}
-
           {comments.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '1.5rem', color: '#a0a09c', fontSize: '13px' }}>まだコメントはありません</div>
           ) : comments.map(c => {
