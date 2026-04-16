@@ -104,15 +104,16 @@ export default function NewIdeaPage() {
       is_hidden: false
     }
 
+    let newIdeaId = draftId
     if (draftId) {
-      // 下書きを本投稿に変換
       const { error } = await supabase.from('ideas').update(payload).eq('id', draftId)
       if (error) { alert('エラーが発生しました: ' + error.message); setLoading(false); return }
     } else {
-      const { error } = await supabase.from('ideas').insert(payload)
+      const { data: newIdea, error } = await supabase.from('ideas').insert(payload).select().single()
       if (error) { alert('エラーが発生しました: ' + error.message); setLoading(false); return }
+      newIdeaId = newIdea?.id
     }
-    router.push('/')
+    router.push(newIdeaId ? `/ideas/${newIdeaId}/edit` : '/')
   }
 
   async function deleteDraft() {
