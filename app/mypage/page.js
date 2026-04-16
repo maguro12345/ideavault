@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import Cropper from 'react-easy-crop'
 import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -16,6 +17,11 @@ export default function MyPage() {
   const [saving, setSaving] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [bannerUploading, setBannerUploading] = useState(false)
+  const [cropModal, setCropModal] = useState(null) // { file, type: 'avatar'|'banner' }
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
+  const [cropSrc, setCropSrc] = useState(null)
   const [followCounts, setFollowCounts] = useState({ following: 0, followers: 0 })
   const [form, setForm] = useState({
     full_name: '', username: '', bio: '', location: '',
@@ -74,31 +80,45 @@ export default function MyPage() {
     setFollowCounts({ following: following || 0, followers: followers || 0 })
   }
 
-  async function uploadAvatar(e) {
+  function openCrop(e, type) {
     const file = e.target.files[0]
     if (!file) return
-    setAvatarUploading(true)
-    const ext = file.name.split('.').pop()
-    const path = `avatar_${user.id}.${ext}`
-    await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
-    await getProfile(user.id)
-    setAvatarUploading(false)
+    const reader = new FileReader()
+    reader.onload = () => { setCropSrc(reader.result); setCropModal({ file, type }); setCrop({ x: 0, y: 0 }); setZoom(1) }
+    reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
-  async function uploadBanner(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    setBannerUploading(true)
-    const ext = file.name.split('.').pop()
-    const path = `banner_${user.id}.${ext}`
-    await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-    await supabase.from('profiles').update({ banner_url: publicUrl }).eq('id', user.id)
-    await getProfile(user.id)
-    setBannerUploading(false)
+  const onCropComplete = useCallback((_, pixels) => { setCroppedAreaPixels(pixels) }, [])
+
+  async function getCroppedImg(src, pixels) {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src })
+    const canvas = document.createElement('canvas')
+    canvas.width = pixels.width; canvas.height = pixels.height
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(img, pixels.x, pixels.y, pixels.width, pixels.height, 0, 0, pixels.width, pixels.height)
+    return new Promise(res => canvas.toBlob(blob => res(blob), 'image/jpeg', 0.95))
   }
+
+  async function applyCrop() {
+    if (!croppedAreaPixels || !cropModal) return
+    const { type } = cropModal
+    if (type === 'avatar') setAvatarUploading(true)
+    else setBannerUploading(true)
+    const blob = await getCroppedImg(cropSrc, croppedAreaPixels)
+    const path = `${type}_${user.id}.jpg`
+    await supabase.storage.from('avatars').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    const update = type === 'avatar' ? { avatar_url: publicUrl } : { banner_url: publicUrl }
+    await supabase.from('profiles').update(update).eq('id', user.id)
+    await getProfile(user.id)
+    if (type === 'avatar') setAvatarUploading(false)
+    else setBannerUploading(false)
+    setCropModal(null); setCropSrc(null)
+  }
+
+  async function uploadAvatar(e) { openCrop(e, 'avatar') }
+  async function uploadBanner(e) { openCrop(e, 'banner') }
 
   async function saveProfile() {
     setSaving(true)
@@ -423,6 +443,38 @@ export default function MyPage() {
           )
         )}
       </div>
+    {/* クロップモーダル */}
+      {cropModal && cropSrc && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
+          <div style={{ background: '#fff', borderRadius: '16px', overflow: 'hidden', width: '100%', maxWidth: '500px' }}>
+            <div style={{ padding: '14px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.1)', fontSize: '14px', fontWeight: '700', color: '#1a1a18' }}>
+              {cropModal.type === 'avatar' ? 'アイコン' : 'バナー'}画像をトリミング
+            </div>
+            <div style={{ position: 'relative', width: '100%', height: '300px', background: '#000' }}>
+              <Cropper
+                image={cropSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={cropModal.type === 'avatar' ? 1 : 16 / 5}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+              />
+            </div>
+            <div style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span style={{ fontSize: '12px', color: '#6b6b67', flexShrink: 0 }}>ズーム</span>
+                <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={e => setZoom(Number(e.target.value))} style={{ flex: 1 }} />
+                <span style={{ fontSize: '12px', color: '#6b6b67', flexShrink: 0 }}>{zoom.toFixed(1)}x</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => { setCropModal(null); setCropSrc(null) }} style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67', background: '#fff', cursor: 'pointer' }}>キャンセル</button>
+                <button onClick={applyCrop} style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: '#1D9E75', color: '#fff', border: 'none', cursor: 'pointer' }}>適用する</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
