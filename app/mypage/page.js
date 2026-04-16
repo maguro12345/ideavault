@@ -10,14 +10,12 @@ export default function MyPage() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [ideas, setIdeas] = useState([])
-  const [pitchDecks, setPitchDecks] = useState([])
-  const [tab, setTab] = useState('ideas')
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [bannerUploading, setBannerUploading] = useState(false)
-  const [cropModal, setCropModal] = useState(null) // { file, type: 'avatar'|'banner' }
+  const [cropModal, setCropModal] = useState(null)
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
@@ -40,7 +38,6 @@ export default function MyPage() {
     setUser(user)
     await getProfile(user.id)
     await getIdeas(user.id)
-    await getPitchDecks(user.id)
     await getFollowCounts(user.id)
     setLoading(false)
   }
@@ -63,13 +60,8 @@ export default function MyPage() {
   }
 
   async function getIdeas(userId) {
-    const { data } = await supabase.from('ideas').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+    const { data } = await supabase.from('ideas').select('*').eq('user_id', userId).eq('is_draft', false).order('created_at', { ascending: false })
     setIdeas(data || [])
-  }
-
-  async function getPitchDecks(userId) {
-    const { data } = await supabase.from('pitch_decks').select('*').eq('user_id', userId).order('created_at', { ascending: false })
-    setPitchDecks(data || [])
   }
 
   async function getFollowCounts(userId) {
@@ -143,12 +135,6 @@ export default function MyPage() {
     setSaving(false)
   }
 
-  async function deletePitchDeck(id) {
-    if (!confirm('このピッチデックを削除しますか？')) return
-    await supabase.from('pitch_decks').delete().eq('id', id)
-    await getPitchDecks(user.id)
-  }
-
   function formatDate(ts) {
     const d = new Date(ts)
     return `${d.getFullYear()}年${d.getMonth() + 1}月`
@@ -173,7 +159,6 @@ export default function MyPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
       <Navbar />
-
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '2rem 1.25rem' }}>
 
         {/* プロフィールカード */}
@@ -240,22 +225,15 @@ export default function MyPage() {
           <div style={{ padding: '0 1.5rem 1.5rem' }}>
             {!editing ? (
               <>
-                {/* 名前＋認証バッジ */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '2px' }}>
                   <div style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a18' }}>{name}</div>
                   {profile?.is_verified && (
-                    <span style={{ fontSize: '12px', background: '#d8f2ea', color: '#0d6e50', padding: '3px 10px', borderRadius: '20px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                      ✅ 認証済み法人
-                    </span>
+                    <span style={{ fontSize: '12px', background: '#d8f2ea', color: '#0d6e50', padding: '3px 10px', borderRadius: '20px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '3px' }}>✅ 認証済み法人</span>
                   )}
                   {profile?.is_company && !profile?.is_verified && (
-                    <span style={{ fontSize: '12px', background: '#eef2f7', color: '#1a3a5c', padding: '3px 10px', borderRadius: '20px', fontWeight: '700' }}>
-                      🏢 法人
-                    </span>
+                    <span style={{ fontSize: '12px', background: '#eef2f7', color: '#1a3a5c', padding: '3px 10px', borderRadius: '20px', fontWeight: '700' }}>🏢 法人</span>
                   )}
-                  {profile?.is_private && (
-                    <span style={{ fontSize: '12px', color: '#6b6b67' }}>🔒 鍵垢</span>
-                  )}
+                  {profile?.is_private && <span style={{ fontSize: '12px', color: '#6b6b67' }}>🔒 鍵垢</span>}
                 </div>
                 {profile?.username && <div style={{ fontSize: '14px', color: '#6b6b67', marginBottom: '10px' }}>@{profile.username}</div>}
                 {profile?.bio && <div style={{ fontSize: '14px', color: '#1a1a18', lineHeight: '1.7', marginBottom: '12px' }}>{profile.bio}</div>}
@@ -270,8 +248,6 @@ export default function MyPage() {
                     ))}
                   </div>
                 )}
-
-                {/* 認証済みの場合は法人番号も表示 */}
                 {profile?.is_verified && profile?.corporate_number && (
                   <div style={{ background: '#f0faf6', borderRadius: '10px', padding: '10px 14px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '14px' }}>🏛️</span>
@@ -281,7 +257,6 @@ export default function MyPage() {
                     </div>
                   </div>
                 )}
-
                 <div style={{ borderTop: '0.5px solid rgba(0,0,0,0.08)', paddingTop: '12px', display: 'flex', gap: '20px' }}>
                   <div>
                     <span style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a18' }}>{followCounts.following}</span>
@@ -314,8 +289,7 @@ export default function MyPage() {
                 {form.is_company && (
                   <div style={{ marginBottom: '12px' }}>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>会社名</label>
-                    <input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })}
-                      placeholder="例：株式会社〇〇"
+                    <input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} placeholder="例：株式会社〇〇"
                       style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 )}
@@ -326,8 +300,7 @@ export default function MyPage() {
                 ].map(({ label, key, placeholder }) => (
                   <div key={key} style={{ marginBottom: '12px' }}>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>{label}</label>
-                    <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })}
-                      placeholder={placeholder}
+                    <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} placeholder={placeholder}
                       style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 ))}
@@ -339,8 +312,7 @@ export default function MyPage() {
                 </div>
                 <div style={{ marginBottom: '1.25rem' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>タグ（カンマ区切り）</label>
-                  <input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })}
-                    placeholder="例：SaaS, AI, フードテック"
+                  <input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="例：SaaS, AI, フードテック"
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
@@ -354,96 +326,37 @@ export default function MyPage() {
           </div>
         </div>
 
-        {/* タブ */}
-        <div style={{ display: 'flex', borderBottom: '0.5px solid rgba(0,0,0,0.1)', marginBottom: '12px', background: '#fff', borderRadius: '14px 14px 0 0', overflow: 'hidden' }}>
-          {[
-            { key: 'ideas', label: `企画 ${ideas.length}` },
-            { key: 'pitch', label: `ピッチデック ${pitchDecks.length}` }
-          ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
-              flex: 1, padding: '14px', fontSize: '14px', fontWeight: tab === t.key ? '700' : '400',
-              color: tab === t.key ? '#1a1a18' : '#6b6b67',
-              background: 'none', border: 'none', cursor: 'pointer',
-              borderBottom: tab === t.key ? '2px solid #1a1a18' : '2px solid transparent',
-              transition: 'all 0.15s'
-            }}>{t.label}</button>
-          ))}
-        </div>
-
         {/* 投稿ボタン */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-          {tab === 'ideas' ? (
-            <Link href="/ideas/create" style={{ background: '#1D9E75', color: '#fff', padding: '8px 18px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>＋ 企画を投稿</Link>
-          ) : (
-            <Link href="/pitch/create" style={{ background: '#1D9E75', color: '#fff', padding: '8px 18px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>＋ ピッチデックを投稿</Link>
-          )}
+          <Link href="/ideas/create" style={{ background: '#1D9E75', color: '#fff', padding: '8px 18px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>＋ 企画を投稿</Link>
         </div>
 
         {/* 企画一覧 */}
-        {tab === 'ideas' && (
-          ideas.length === 0 ? (
-            <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '3rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>まだ投稿がありません</div>
-          ) : ideas.map(idea => {
-            const badge = BADGE[idea.status] || BADGE['アイデア']
-            return (
-              <div key={idea.id} onClick={() => router.push(`/ideas/${idea.id}`)} style={{
-                background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)',
-                padding: '1.1rem 1.3rem', marginBottom: '10px', cursor: 'pointer'
-              }}
-                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.07)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a18' }}>{idea.title}</div>
-                  <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0, background: badge.bg, color: badge.color }}>{idea.status}</span>
-                </div>
-                {idea.concept && (
-                  <div style={{ fontSize: '13px', color: '#6b6b67', lineHeight: '1.6', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{idea.concept}</div>
-                )}
+        {ideas.length === 0 ? (
+          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '3rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>まだ投稿がありません</div>
+        ) : ideas.map(idea => {
+          const badge = BADGE[idea.status] || BADGE['アイデア']
+          return (
+            <div key={idea.id} onClick={() => router.push(`/ideas/${idea.id}`)} style={{
+              background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)',
+              padding: '1.1rem 1.3rem', marginBottom: '10px', cursor: 'pointer'
+            }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.07)'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: '#1a1a18' }}>{idea.title}</div>
+                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0, background: badge.bg, color: badge.color }}>{idea.status}</span>
               </div>
-            )
-          })
-        )}
-
-        {/* ピッチデック一覧 */}
-        {tab === 'pitch' && (
-          pitchDecks.length === 0 ? (
-            <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '3rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>まだピッチデックがありません</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
-              {pitchDecks.map(deck => (
-                <div key={deck.id} style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', overflow: 'hidden', cursor: 'pointer' }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.07)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
-                >
-                  <div style={{ height: '160px', background: '#f0eeea', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                    {deck.thumbnail_url ? (
-                      <img src={deck.thumbnail_url} alt={deck.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '40px', marginBottom: '8px' }}>{deck.file_type === 'pdf' ? '📄' : '📊'}</div>
-                        <div style={{ fontSize: '12px', color: '#a0a09c', textTransform: 'uppercase', fontWeight: '600' }}>{deck.file_type}</div>
-                      </div>
-                    )}
-                    <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '10px', padding: '2px 8px', borderRadius: '20px', textTransform: 'uppercase', fontWeight: '600' }}>{deck.file_type}</div>
-                  </div>
-                  <div style={{ padding: '12px 14px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18', marginBottom: '4px' }}>{deck.title}</div>
-                    {deck.description && (
-                      <div style={{ fontSize: '12px', color: '#6b6b67', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: '10px' }}>{deck.description}</div>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <a href={deck.file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#1D9E75', fontWeight: '600', textDecoration: 'none' }} onClick={e => e.stopPropagation()}>開いて見る →</a>
-                      <button onClick={e => { e.stopPropagation(); deletePitchDeck(deck.id) }} style={{ background: 'none', border: 'none', fontSize: '12px', color: '#c04020', cursor: 'pointer' }}>削除</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {idea.concept && (
+                <div style={{ fontSize: '13px', color: '#6b6b67', lineHeight: '1.6', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{idea.concept}</div>
+              )}
             </div>
           )
-        )}
+        })}
       </div>
-    {/* クロップモーダル */}
+
+      {/* クロップモーダル */}
       {cropModal && cropSrc && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
           <div style={{ background: '#fff', borderRadius: '16px', overflow: 'hidden', width: '100%', maxWidth: '500px' }}>
@@ -451,15 +364,8 @@ export default function MyPage() {
               {cropModal.type === 'avatar' ? 'アイコン' : 'バナー'}画像をトリミング
             </div>
             <div style={{ position: 'relative', width: '100%', height: '300px', background: '#000' }}>
-              <Cropper
-                image={cropSrc}
-                crop={crop}
-                zoom={zoom}
-                aspect={cropModal.type === 'avatar' ? 1 : 16 / 5}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-              />
+              <Cropper image={cropSrc} crop={crop} zoom={zoom} aspect={cropModal.type === 'avatar' ? 1 : 16 / 5}
+                onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
             </div>
             <div style={{ padding: '14px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
