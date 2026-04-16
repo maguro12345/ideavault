@@ -12,6 +12,7 @@ export default function NewIdeaPage() {
   const [draftSaved, setDraftSaved] = useState(false)
   const [draftId, setDraftId] = useState(null)
   const [categories, setCategories] = useState([])
+  const [pitchDeckFile, setPitchDeckFile] = useState(null)
   const [form, setForm] = useState({
     title: '', status: 'アイデア', category: [], visibility: 'public',
     concept: '', features: '', target: '',
@@ -23,7 +24,6 @@ export default function NewIdeaPage() {
 
   useEffect(() => { checkUser(); fetchCategories() }, [])
 
-  // 自動保存：フォーム変更から3秒後に下書き保存
   useEffect(() => {
     if (!user || !form.title.trim()) return
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
@@ -35,7 +35,6 @@ export default function NewIdeaPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
     setUser(user)
-    // 既存の下書きを読み込む
     const { data } = await supabase.from('ideas')
       .select('*').eq('user_id', user.id).eq('is_draft', true)
       .order('draft_saved_at', { ascending: false }).limit(1).single()
@@ -74,8 +73,7 @@ export default function NewIdeaPage() {
     if (!user || !form.title.trim()) return
     if (!auto) setDraftSaving(true)
     const payload = {
-      user_id: user.id,
-      ...form,
+      user_id: user.id, ...form,
       category: form.category.join(', '),
       is_draft: true,
       draft_saved_at: new Date().toISOString()
@@ -97,8 +95,7 @@ export default function NewIdeaPage() {
     setLoading(true)
 
     const payload = {
-      user_id: user.id,
-      ...form,
+      user_id: user.id, ...form,
       category: form.category.join(', '),
       is_draft: false,
       is_hidden: false
@@ -113,7 +110,27 @@ export default function NewIdeaPage() {
       if (error) { alert('エラーが発生しました: ' + error.message); setLoading(false); return }
       newIdeaId = newIdea?.id
     }
-    router.push(newIdeaId ? `/ideas/${newIdeaId}/edit` : '/')
+
+    // ピッチデックをアップロード
+    if (pitchDeckFile && newIdeaId) {
+      const file = pitchDeckFile
+      const ext = file.name.split('.').pop().toLowerCase()
+      const fileType = file.type === 'application/pdf' ? 'pdf' : 'pptx'
+      const path = `${user.id}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage.from('pitchdecks').upload(path, file, { upsert: true })
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from('pitchdecks').getPublicUrl(path)
+        await supabase.from('pitch_decks').insert({
+          user_id: user.id,
+          idea_id: newIdeaId,
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          file_url: publicUrl,
+          file_type: fileType
+        })
+      }
+    }
+
+    router.push(newIdeaId ? `/ideas/${newIdeaId}` : '/')
   }
 
   async function deleteDraft() {
@@ -127,11 +144,9 @@ export default function NewIdeaPage() {
   const field = (label, name, placeholder, rows = 4) => (
     <div style={{ marginBottom: '1rem' }}>
       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }}>{label}</label>
-      <textarea
-        name={name} value={form[name]} onChange={e => setForm({ ...form, [e.target.name]: e.target.value })}
+      <textarea name={name} value={form[name]} onChange={e => setForm({ ...form, [e.target.name]: e.target.value })}
         placeholder={placeholder} rows={rows}
-        style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', resize: 'vertical', lineHeight: '1.7', fontFamily: 'inherit', boxSizing: 'border-box' }}
-      />
+        style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px', outline: 'none', resize: 'vertical', lineHeight: '1.7', fontFamily: 'inherit', boxSizing: 'border-box' }} />
     </div>
   )
 
@@ -147,7 +162,6 @@ export default function NewIdeaPage() {
           </div>
         </div>
 
-        {/* 下書きバナー */}
         {draftId && (
           <div style={{ background: '#fdecd4', borderRadius: '12px', padding: '12px 16px', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '13px', color: '#8a4f0a', fontWeight: '600' }}>📝 下書きを読み込みました</div>
@@ -156,6 +170,7 @@ export default function NewIdeaPage() {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* 基本情報 */}
           <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '1rem' }}>
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.7px', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>基本情報</div>
 
@@ -221,7 +236,8 @@ export default function NewIdeaPage() {
             </div>
           </div>
 
-          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '1.5rem' }}>
+          {/* 企画内容 */}
+          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '1rem' }}>
             <div style={{ fontSize: '11px', fontWeight: '700', color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.7px', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>企画内容</div>
             {field('コンセプト', 'concept', 'このサービスが解決する課題と提供する価値', 3)}
             {field('主な機能・サービス', 'features', '・機能1\n・機能2\n・機能3', 5)}
@@ -232,6 +248,35 @@ export default function NewIdeaPage() {
             {field('メモ＆補足', 'memo', '競合調査、懸念点、次のアクションなど', 4)}
           </div>
 
+          {/* ピッチデック */}
+          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.7px', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>ピッチデック（任意）</div>
+            <div style={{ fontSize: '13px', color: '#6b6b67', marginBottom: '12px', lineHeight: '1.7' }}>
+              PDF・PowerPointファイルをアップロードできます。投稿後も編集ページから追加・削除できます。
+            </div>
+
+            {pitchDeckFile ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', background: '#f5f4f0', borderRadius: '10px', marginBottom: '10px' }}>
+                <span style={{ fontSize: '24px', flexShrink: 0 }}>{pitchDeckFile.name.endsWith('.pdf') ? '📄' : '📊'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pitchDeckFile.name}</div>
+                  <div style={{ fontSize: '11px', color: '#a0a09c', marginTop: '2px' }}>{(pitchDeckFile.size / 1024 / 1024).toFixed(1)} MB</div>
+                </div>
+                <button type="button" onClick={() => setPitchDeckFile(null)} style={{ padding: '5px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', background: '#fff', color: '#c04020', border: '1px solid #c04020', cursor: 'pointer', flexShrink: 0 }}>削除</button>
+              </div>
+            ) : (
+              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', borderRadius: '12px', border: '2px dashed rgba(0,0,0,0.15)', cursor: 'pointer', background: '#fafafa' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#1D9E75'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(0,0,0,0.15)'}>
+                <span style={{ fontSize: '32px', marginBottom: '8px' }}>📎</span>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', marginBottom: '4px' }}>クリックしてファイルを選択</div>
+                <div style={{ fontSize: '11px', color: '#a0a09c' }}>PDF・PPT・PPTX対応</div>
+                <input type="file" accept=".pdf,.ppt,.pptx" onChange={e => { const f = e.target.files[0]; if (f) setPitchDeckFile(f); e.target.value = '' }} style={{ display: 'none' }} />
+              </label>
+            )}
+          </div>
+
+          {/* ボタン */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
             <Link href="/" style={{ padding: '10px 20px', borderRadius: '10px', fontSize: '14px', border: '0.5px solid rgba(0,0,0,0.15)', color: '#6b6b67', textDecoration: 'none', display: 'inline-block' }}>キャンセル</Link>
             <button type="button" onClick={() => saveDraft(false)} disabled={draftSaving || !form.title.trim()} style={{
