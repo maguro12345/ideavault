@@ -1,7 +1,8 @@
- 'use client'
+'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import CompanyNavbar from '../../../components/CompanyNavbar'
 
 export default function CompanyProfilePage() {
@@ -14,13 +15,8 @@ export default function CompanyProfilePage() {
   const [passwordMsg, setPasswordMsg] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [form, setForm] = useState({
-    company_name: '',
-    company_type: '企業',
-    industry: '',
-    contact_name: '',
-    company_description: '',
-    location: '',
-    tags: ''
+    company_name: '', company_type: '企業', industry: '',
+    contact_name: '', company_description: '', location: '', tags: ''
   })
   const fileInputRef = useRef(null)
   const bannerInputRef = useRef(null)
@@ -106,11 +102,7 @@ export default function CompanyProfilePage() {
     border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '14px',
     outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit'
   }
-
-  const labelStyle = {
-    display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px'
-  }
-
+  const labelStyle = { display: 'block', fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '5px' }
   const sectionTitle = (title) => (
     <div style={{ fontSize: '11px', fontWeight: '700', color: '#1a3a5c', textTransform: 'uppercase', letterSpacing: '0.7px', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>{title}</div>
   )
@@ -142,15 +134,11 @@ export default function CompanyProfilePage() {
           </div>
           <div style={{ padding: '0 1.5rem', display: 'flex', alignItems: 'flex-end', gap: '12px', marginTop: '-28px', marginBottom: '12px' }}>
             <div onClick={() => fileInputRef.current?.click()} style={{
-              width: '60px', height: '60px', borderRadius: '12px',
-              border: '3px solid #fff', overflow: 'hidden',
-              background: '#1a3a5c', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', cursor: 'pointer', flexShrink: 0, position: 'relative'
+              width: '60px', height: '60px', borderRadius: '12px', border: '3px solid #fff', overflow: 'hidden',
+              background: '#1a3a5c', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', flexShrink: 0, position: 'relative'
             }}>
-              {profile?.avatar_url
-                ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span style={{ fontSize: '24px' }}>🏢</span>
-              }
+              {profile?.avatar_url ? <img src={profile.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '24px' }}>🏢</span>}
               {avatarUploading && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ color: '#fff', fontSize: '10px' }}>...</span></div>}
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={uploadAvatar} style={{ display: 'none' }} />
@@ -164,7 +152,6 @@ export default function CompanyProfilePage() {
         {/* 法人情報 */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '12px' }}>
           {sectionTitle('法人情報')}
-
           <div style={{ marginBottom: '12px' }}>
             <label style={labelStyle}>アカウント種別</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
@@ -187,8 +174,7 @@ export default function CompanyProfilePage() {
           ].map(({ label, key, placeholder }) => (
             <div key={key} style={{ marginBottom: '12px' }}>
               <label style={labelStyle}>{label}</label>
-              <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })}
-                placeholder={placeholder} style={inputStyle} />
+              <input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} placeholder={placeholder} style={inputStyle} />
             </div>
           ))}
 
@@ -201,8 +187,7 @@ export default function CompanyProfilePage() {
 
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={labelStyle}>タグ（カンマ区切り）</label>
-            <input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })}
-              placeholder="例：フードテック, AI, 共同開発" style={inputStyle} />
+            <input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="例：フードテック, AI, 共同開発" style={inputStyle} />
           </div>
 
           <button onClick={saveProfile} disabled={saving} style={{
@@ -212,23 +197,57 @@ export default function CompanyProfilePage() {
           }}>{saving ? '保存中...' : '保存する'}</button>
         </div>
 
-        {/* パスワード変更 */}
+        {/* セキュリティ */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.5rem', marginBottom: '12px' }}>
           {sectionTitle('セキュリティ')}
-          <div style={{ marginBottom: '8px' }}>
+
+          <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>メールアドレス</label>
             <div style={{ background: '#f5f4f0', borderRadius: '10px', padding: '10px 12px', fontSize: '14px', color: '#6b6b67' }}>{user?.email}</div>
           </div>
+
           <div style={{ marginBottom: '12px' }}>
             <label style={labelStyle}>新しいパスワード</label>
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-              placeholder="6文字以上" style={inputStyle} />
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="6文字以上" style={inputStyle} />
           </div>
           {passwordMsg && <div style={{ fontSize: '13px', color: passwordMsg.includes('エラー') ? '#c04020' : '#0d6e50', marginBottom: '8px' }}>{passwordMsg}</div>}
-          <button onClick={changePassword} style={{
-            padding: '9px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-            background: '#1a1a18', color: '#fff', border: 'none', cursor: 'pointer'
-          }}>パスワードを変更</button>
+          <button onClick={changePassword} style={{ padding: '9px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: '#1a1a18', color: '#fff', border: 'none', cursor: 'pointer', marginBottom: '16px' }}>
+            パスワードを変更
+          </button>
+
+          <div style={{ borderTop: '0.5px solid rgba(0,0,0,0.08)', paddingTop: '16px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#6b6b67', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>アクセス管理</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Link href="/settings/sessions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.1)', textDecoration: 'none', background: '#fff' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f5f4f0'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '18px' }}>🖥️</span>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>セッション管理</div>
+                    <div style={{ fontSize: '11px', color: '#6b6b67' }}>ログイン中の端末一覧・強制ログアウト</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '14px', color: '#a0a09c' }}>→</span>
+              </Link>
+
+              <Link href="/settings/2fa" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #1a3a5c', textDecoration: 'none', background: '#eef2f7' }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '18px' }}>🔐</span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a3a5c' }}>2要素認証（2FA）</div>
+                      <span style={{ fontSize: '10px', background: '#1a3a5c', color: '#fff', padding: '2px 7px', borderRadius: '20px', fontWeight: '600' }}>推奨</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#1a3a5c' }}>企業アカウントは設定を強く推奨します</div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '14px', color: '#1a3a5c' }}>→</span>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
