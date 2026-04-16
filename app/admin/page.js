@@ -4,7 +4,7 @@ import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Navbar from '../../components/Navbar'
 
-const IS_PRODUCTION = process.env.NEXT_PUBLIC_ENV === 'production'
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || ''
 
 export default function AdminPage() {
   const [tab, setTab] = useState('dashboard')
@@ -23,13 +23,13 @@ export default function AdminPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    if (IS_PRODUCTION) { router.push('/'); return }
     init()
   }, [])
 
   async function init() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
+    if (ADMIN_EMAIL && user.email !== ADMIN_EMAIL) { router.push('/'); return }
     await Promise.all([
       fetchCategories(),
       fetchAgreements(),
@@ -175,7 +175,7 @@ export default function AdminPage() {
 
   const cardStyle = { background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem', marginBottom: '12px' }
 
-  if (IS_PRODUCTION) return null
+  
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f4f0' }}>
