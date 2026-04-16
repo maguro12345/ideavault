@@ -23,6 +23,7 @@ export default function IdeaDetailPage() {
   const [reportDetail, setReportDetail] = useState('')
   const [reporting, setReporting] = useState(false)
   const [comments, setComments] = useState([])
+  const [pitchDecks, setPitchDecks] = useState([])
   const [commentContent, setCommentContent] = useState('')
   const [postingComment, setPostingComment] = useState(false)
   const [progress, setProgress] = useState([])
@@ -67,6 +68,8 @@ export default function IdeaDetailPage() {
     const { count: wc } = await supabase.from('watches').select('*', { count: 'exact', head: true }).eq('idea_id', params.id)
     setWatchCount(wc || 0)
     setLoading(false)
+    const { data: decks } = await supabase.from('pitch_decks').select('*').eq('user_id', data?.user_id || '').order('created_at', { ascending: false })
+    setPitchDecks(decks || [])
   }
 
   async function getComments() {
@@ -75,6 +78,13 @@ export default function IdeaDetailPage() {
       .eq('idea_id', params.id)
       .order('created_at', { ascending: true })
     setComments(data || [])
+  }
+
+  async function getPitchDecks() {
+    const { data } = await supabase.from('pitch_decks')
+      .select('*').eq('user_id', idea?.user_id || '')
+      .order('created_at', { ascending: false })
+    setPitchDecks(data || [])
   }
 
   async function getProgress() {
@@ -268,7 +278,11 @@ export default function IdeaDetailPage() {
               {profile?.avatar_url ? <img src={profile.avatar_url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : name[0]}
             </div>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a18' }}>{name}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a18' }}>{name}</div>
+                {profile?.is_verified && <span style={{ fontSize: '11px', background: '#d8f2ea', color: '#0d6e50', padding: '2px 7px', borderRadius: '20px', fontWeight: '600' }}>✅ 認証済み</span>}
+                {profile?.is_company && !profile?.is_verified && <span style={{ fontSize: '11px', background: '#eef2f7', color: '#1a3a5c', padding: '2px 7px', borderRadius: '20px', fontWeight: '600' }}>🏢 法人</span>}
+              </div>
               {profile?.bio && <div style={{ fontSize: '12px', color: '#6b6b67' }}>{profile.bio}</div>}
             </div>
             {idea.category && <span style={{ marginLeft: 'auto', fontSize: '11px', background: '#f0eeea', padding: '3px 9px', borderRadius: '20px', color: '#6b6b67', flexShrink: 0 }}>{idea.category}</span>}
@@ -391,6 +405,63 @@ export default function IdeaDetailPage() {
             </div>
           )}
         </div>
+
+        {/* ピッチデック */}
+        {pitchDecks.length > 0 && (
+          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem', marginBottom: '12px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18', marginBottom: '12px' }}>📊 ピッチデック</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+              {pitchDecks.map(deck => (
+                <a key={deck.id} href={deck.file_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                  <div style={{ background: '#f5f4f0', borderRadius: '12px', overflow: 'hidden', border: '0.5px solid rgba(0,0,0,0.08)' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+                    {deck.thumbnail_url ? (
+                      <img src={deck.thumbnail_url} alt={deck.title} style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '32px' }}>{deck.file_type === 'pdf' ? '📄' : '📊'}</span>
+                        <span style={{ fontSize: '10px', color: '#a0a09c', textTransform: 'uppercase', fontWeight: '600' }}>{deck.file_type}</span>
+                      </div>
+                    )}
+                    <div style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{deck.title}</div>
+                      {deck.description && <div style={{ fontSize: '11px', color: '#6b6b67', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{deck.description}</div>}
+                      <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: '600', marginTop: '4px' }}>開いて見る →</div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ピッチデック（あるときのみ表示） */}
+        {pitchDecks.length > 0 && (
+          <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem', marginBottom: '12px' }}>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18', marginBottom: '12px' }}>📊 ピッチデック</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+              {pitchDecks.map(deck => (
+                <a key={deck.id} href={deck.file_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                  <div style={{ background: '#f5f4f0', borderRadius: '12px', overflow: 'hidden', border: '0.5px solid rgba(0,0,0,0.08)' }}>
+                    {deck.thumbnail_url ? (
+                      <img src={deck.thumbnail_url} alt={deck.title} style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div style={{ height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '32px' }}>{deck.file_type === 'pdf' ? '📄' : '📊'}</span>
+                        <span style={{ fontSize: '10px', color: '#a0a09c', textTransform: 'uppercase', fontWeight: '600' }}>{deck.file_type}</span>
+                      </div>
+                    )}
+                    <div style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{deck.title}</div>
+                      <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: '600' }}>開いて見る →</div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* コメント */}
         <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '1.25rem' }}>
