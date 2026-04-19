@@ -251,7 +251,9 @@ export default function Home() {
                   {jobPostings.map(p => {
                     const cName = p.profiles?.company_name || p.profiles?.full_name || '企業'
                     return (
-                      <div key={p.id} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid rgba(26,58,92,0.2)', padding: '1rem 1.25rem', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <Link key={p.id} href={`/recruit/${p.id}`} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid rgba(26,58,92,0.2)', padding: '1rem 1.25rem', display: 'flex', gap: '12px', alignItems: 'flex-start', cursor: 'pointer', textDecoration: 'none' }}
+                        onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
                         <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#1a3a5c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0, overflow: 'hidden' }}>
                           {p.profiles?.avatar_url ? <img src={p.profiles.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🏢'}
                         </div>
@@ -264,7 +266,7 @@ export default function Home() {
                             {p.budget && <span style={{ fontSize: '10px', background: '#d8f2ea', color: '#0d6e50', padding: '2px 7px', borderRadius: '20px' }}>💰 {p.budget}</span>}
                           </div>
                         </div>
-                      </div>
+                      </Link>
                     )
                   })}
                 </div>
