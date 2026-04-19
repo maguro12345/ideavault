@@ -10,18 +10,34 @@ function SearchContent() {
   const [query, setQuery] = useState('')
   const [userResults, setUserResults] = useState([])
   const [ideaResults, setIdeaResults] = useState([])
+  const [recruitResults, setRecruitResults] = useState([])
   const [tab, setTab] = useState('users')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
   const supabase = createClient()
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
+      if (typeof window !== 'undefined') {
+        const p = new URLSearchParams(window.location.search)
+        if (p.get('tab') === 'recruit') { setTab('recruit'); fetchAllRecruits() }
+      }
     }
     init()
   }, [])
+
+  async function fetchAllRecruits(q = '') {
+    let query = supabase.from('job_postings')
+      .select('*, profiles(id, company_name, full_name, avatar_url, is_verified)')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+    if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,industry.ilike.%${q}%,keywords.ilike.%${q}%`)
+    const { data } = await query.limit(50)
+    setRecruitResults(data || [])
+  }
 
   useEffect(() => {
     if (query.trim().length < 1) {
@@ -39,9 +55,11 @@ function SearchContent() {
     // @がついていたら除去してusername検索
     const cleanQ = q.startsWith('@') ? q.slice(1) : q
 
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+
     const [{ data: users }, { data: ideas }] = await Promise.all([
       supabase.from('profiles')
-        .select('id, username, full_name, bio, avatar_url, is_company, company_name, tags, location')
+        .select('id, username, full_name, bio, avatar_url, is_company, company_name, tags, location, is_private, is_verified')
         .or([
           `username.ilike.%${cleanQ}%`,
           `full_name.ilike.%${cleanQ}%`,
@@ -50,7 +68,7 @@ function SearchContent() {
         ].join(','))
         .limit(20),
       supabase.from('ideas')
-        .select('id, title, concept, category, status, profiles(id, full_name, username, is_company, company_name)')
+        .select('id, title, concept, category, status, user_id, profiles(id, full_name, username, is_company, company_name, is_private)')
         .or([
           `title.ilike.%${q}%`,
           `concept.ilike.%${q}%`,
@@ -59,11 +77,28 @@ function SearchContent() {
           `target.ilike.%${q}%`,
           `revenue.ilike.%${q}%`
         ].join(','))
-        .limit(20)
+        .limit(50)
     ])
 
+    let filteredIdeas = ideas || []
+    if (filteredIdeas.length > 0) {
+      if (currentUser) {
+        const { data: follows } = await supabase
+          .from('follows').select('following_id').eq('follower_id', currentUser.id)
+        const followingIds = new Set(follows?.map(f => f.following_id) || [])
+        filteredIdeas = filteredIdeas.filter(idea => {
+          if (!idea.profiles?.is_private) return true
+          if (idea.user_id === currentUser.id) return true
+          return followingIds.has(idea.user_id)
+        })
+      } else {
+        filteredIdeas = filteredIdeas.filter(idea => !idea.profiles?.is_private)
+      }
+    }
+
+    await fetchAllRecruits(q)
     setUserResults(users || [])
-    setIdeaResults(ideas || [])
+    setIdeaResults(filteredIdeas.slice(0, 20))
     setLoading(false)
   }
 
@@ -142,7 +177,8 @@ function SearchContent() {
             <div style={{ display: 'flex', gap: '6px', marginBottom: '1rem' }}>
               {[
                 { key: 'users', label: `ユーザー`, count: userResults.length },
-                { key: 'ideas', label: `企画`, count: ideaResults.length }
+                { key: 'ideas', label: `企画`, count: ideaResults.length },
+                { key: 'recruit', label: `募集`, count: recruitResults.length }
               ].map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)} style={{
                   padding: '7px 18px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
@@ -193,7 +229,8 @@ function SearchContent() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
                             <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18' }}>{highlight(name, query)}</div>
-                            {p.is_company && <span style={{ fontSize: '10px', background: '#1a3a5c', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>法人</span>}
+                            {p.is_verified && <span style={{ fontSize: '10px', background: '#d8f2ea', color: '#0d6e50', padding: '2px 7px', borderRadius: '20px', fontWeight: '600' }}>✅ 認証済み</span>}
+                            {p.is_company && !p.is_verified && <span style={{ fontSize: '10px', background: '#1a3a5c', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>法人</span>}
                           </div>
                           {p.username && (
                             <div style={{ fontSize: '12px', color: '#a0a09c', marginBottom: '2px' }}>
@@ -261,6 +298,34 @@ function SearchContent() {
                 )}
               </div>
             )}
+
+                {/* 募集一覧 */}
+                {tab === 'recruit' && (
+                  recruitResults.length === 0 ? (
+                    <div style={{ padding: '3rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>募集が見つかりませんでした</div>
+                  ) : recruitResults.map(p => {
+                    const cName = p.profiles?.company_name || p.profiles?.full_name || '企業'
+                    return (
+                      <div key={p.id} style={{ padding: '14px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.06)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#1a3a5c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', overflow: 'hidden', flexShrink: 0 }}>
+                            {p.profiles?.avatar_url ? <img src={p.profiles.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🏢'}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: '#1a1a18' }}>{p.title}</div>
+                            <div style={{ fontSize: '11px', color: '#a0a09c' }}>{cName}{p.profiles?.is_verified ? ' ✅' : ''}</div>
+                          </div>
+                        </div>
+                        {p.description && <div style={{ fontSize: '12px', color: '#6b6b67', lineHeight: '1.6', marginBottom: '8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</div>}
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {p.industry && <span style={{ fontSize: '10px', background: '#eef2f7', color: '#1a3a5c', padding: '2px 7px', borderRadius: '20px' }}>{p.industry}</span>}
+                          {p.scale && <span style={{ fontSize: '10px', background: '#f0eeea', color: '#6b6b67', padding: '2px 7px', borderRadius: '20px' }}>{p.scale}</span>}
+                          {p.budget && <span style={{ fontSize: '10px', background: '#d8f2ea', color: '#0d6e50', padding: '2px 7px', borderRadius: '20px' }}>💰 {p.budget}</span>}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
           </>
         )}
 
