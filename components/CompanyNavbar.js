@@ -50,6 +50,7 @@ export default function CompanyNavbar() {
     { href: '/company/dashboard', label: 'ダッシュボード', icon: '📊' },
     { href: '/company/ideas', label: 'アイデアを探す', icon: '💡' },
     { href: '/company/scouts', label: 'スカウト管理', icon: '📨' },
+    { href: '/company/recruit', label: '募集を作成', icon: '📢' },
     { href: '/watchlist', label: 'ウォッチリスト', icon: '👁' },
   ]
 
@@ -83,12 +84,7 @@ export default function CompanyNavbar() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-        <div style={{ position: 'relative' }}>
-          <Link href="/company/scouts" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '6px 8px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)' }} title="ビジネスチャット">💼</Link>
-          {unreadBiz > 0 && (
-            <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '16px', height: '16px', borderRadius: '50%', background: '#e74c3c', color: '#fff', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadBiz > 9 ? '9+' : unreadBiz}</div>
-          )}
-        </div>
+        
 
         <div style={{ position: 'relative' }}>
           <Link href="/messages" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center', padding: '6px 8px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)' }} title="メッセージ">💬</Link>
