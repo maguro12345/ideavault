@@ -1,11 +1,13 @@
- 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Navbar from '../../components/Navbar'
+import CompanyNavbar from '../../components/CompanyNavbar'
 
 export default function WatchlistPage() {
   const [user, setUser] = useState(null)
+  const [isCompany, setIsCompany] = useState(false)
   const [ideas, setIdeas] = useState([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -17,6 +19,8 @@ export default function WatchlistPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
     setUser(user)
+    const { data: profile } = await supabase.from('profiles').select('is_company').eq('id', user.id).single()
+    setIsCompany(profile?.is_company || false)
     const { data } = await supabase
       .from('watches')
       .select('*, ideas(*, profiles(id, full_name, username, company_name, is_company, avatar_url, is_verified))')
@@ -47,7 +51,7 @@ export default function WatchlistPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f4f0', fontFamily: 'system-ui, sans-serif' }}>
-      <Navbar />
+      {isCompany ? <CompanyNavbar /> : <Navbar />}
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1.25rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '6px', letterSpacing: '-0.5px' }}>👁 ウォッチリスト</h1>
         <div style={{ fontSize: '13px', color: '#6b6b67', marginBottom: '1.5rem' }}>更新があると通知が届きます</div>
@@ -84,9 +88,7 @@ export default function WatchlistPage() {
                         {idea.category && <span style={{ fontSize: '11px', background: '#f0eeea', padding: '2px 8px', borderRadius: '20px', color: '#6b6b67' }}>{idea.category.split(', ')[0]}</span>}
                       </div>
                     </div>
-                    <button onClick={() => unwatch(idea.id)} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', border: '1px solid rgba(0,0,0,0.15)', background: '#fff', color: '#6b6b67', cursor: 'pointer', flexShrink: 0 }}>
-                      解除
-                    </button>
+                    <button onClick={() => unwatch(idea.id)} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', border: '1px solid rgba(0,0,0,0.15)', background: '#fff', color: '#6b6b67', cursor: 'pointer', flexShrink: 0 }}>解除</button>
                   </div>
                 </div>
               )
