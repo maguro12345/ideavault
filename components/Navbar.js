@@ -88,6 +88,8 @@ export default function Navbar() {
             </div>
 
             <Link href="/messages" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>💬</Link>
+            <Link href="/cofounder" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }} title="共同創業者を探す">🤝</Link>
+            <Link href="/drafts" style={{ fontSize: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center' }} title="下書き一覧">📝</Link>
 
             {/* メニュー */}
             <button onClick={() => setMenuOpen(!menuOpen)} style={{
@@ -111,7 +113,9 @@ export default function Navbar() {
               }}>
                 {[
                   { href: '/mypage', label: '👤 マイページ' },
+                  { href: '/drafts', label: '📝 下書き一覧' },
                   { href: '/watchlist', label: '👁 ウォッチリスト' },
+                  { href: '/cofounder', label: '🤝 共同創業者を探す' },
                   { href: '/settings', label: '⚙️ 設定' },
                   { href: '/scouts', label: '📨 スカウト' },
                   { href: '/search', label: '🔍 検索' },
