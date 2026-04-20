@@ -19,6 +19,10 @@ export default function CompanyNavbar() {
     if (!user) return
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     setProfile(data)
+    if (data?.company_type === 'アドバイザー' && typeof window !== 'undefined' && !window.location.pathname.startsWith('/advisor') && !window.location.pathname.startsWith('/company/profile') && !window.location.pathname.startsWith('/settings') && !window.location.pathname.startsWith('/messages')) {
+      window.location.href = '/advisor/dashboard'
+      return
+    }
     await getBizUnread(user.id)
     await getDMUnread(user.id)
   }
