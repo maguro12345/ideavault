@@ -5,10 +5,12 @@ import { createClient } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '../../components/Navbar'
 import CompanyNavbar from '../../components/CompanyNavbar'
+import AdvisorNavbar from '../../components/AdvisorNavbar'
 
 function MessagesContent() {
   const [user, setUser] = useState(null)
   const [isCompany, setIsCompany] = useState(false)
+  const [isAdvisor, setIsAdvisor] = useState(false)
   const [threads, setThreads] = useState([])
   const [groups, setGroups] = useState([])
   const [selectedDM, setSelectedDM] = useState(null)
@@ -43,8 +45,9 @@ function MessagesContent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
     setUser(user)
-    const { data: prof } = await supabase.from('profiles').select('is_company').eq('id', user.id).single()
+    const { data: prof } = await supabase.from('profiles').select('is_company, company_type').eq('id', user.id).single()
     setIsCompany(prof?.is_company || false)
+    setIsAdvisor(prof?.is_company && prof?.company_type === 'アドバイザー')
     await getThreads(user.id)
     await getGroups(user.id)
     await getFollowers(user.id)
@@ -141,19 +144,13 @@ function MessagesContent() {
     const { data: { publicUrl } } = supabase.storage.from('chat-files').getPublicUrl(path)
     const fileType = file.type.startsWith('image/') ? 'image' : file.type === 'application/pdf' ? 'pdf' : 'file'
     if (selectedDM) {
-      const { data } = await supabase.from('messages').insert({
-        sender_id: user.id, receiver_id: selectedDM,
-        content: file.name, file_url: publicUrl, file_type: fileType, file_name: file.name
-      }).select().single()
+      const { data } = await supabase.from('messages').insert({ sender_id: user.id, receiver_id: selectedDM, content: file.name, file_url: publicUrl, file_type: fileType, file_name: file.name }).select().single()
       if (data) {
         setMessages(prev => [...prev, data])
         await supabase.from('notifications').insert({ user_id: selectedDM, from_id: user.id, type: 'message' })
       }
     } else if (selectedGroup) {
-      const { data } = await supabase.from('group_messages').insert({
-        group_id: selectedGroup, sender_id: user.id,
-        content: file.name, file_url: publicUrl, file_type: fileType, file_name: file.name
-      }).select('*, profiles(id, username, full_name, avatar_url)').single()
+      const { data } = await supabase.from('group_messages').insert({ group_id: selectedGroup, sender_id: user.id, content: file.name, file_url: publicUrl, file_type: fileType, file_name: file.name }).select('*, profiles(id, username, full_name, avatar_url)').single()
       if (data) setMessages(prev => [...prev, data])
     }
     setUploading(false)
@@ -199,19 +196,23 @@ function MessagesContent() {
   }
 
   function getGroupName(id) { return groups.find(g => g.id === id)?.name || 'グループ' }
-  function formatTime(ts) { const d = new Date(ts); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}` }
 
-  const accent = isCompany ? '#1a3a5c' : '#1D9E75'
-  const bg = isCompany ? '#f0f2f5' : '#f5f4f0'
-  const msgBg = isCompany ? '#1a3a5c' : '#1D9E75'
+  function formatTime(ts) {
+    const d = new Date(ts)
+    const now = new Date()
+    const isToday = d.toDateString() === now.toDateString()
+    const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+    if (isToday) return time
+    return `${d.getMonth()+1}月${d.getDate()}日 ${time}`
+  }
+
+  const accent = isAdvisor ? '#2d1f5e' : isCompany ? '#1a3a5c' : '#1D9E75'
+  const bg = isAdvisor ? '#f5f0ff' : isCompany ? '#f0f2f5' : '#f5f4f0'
+  const msgBg = isAdvisor ? '#2d1f5e' : isCompany ? '#1a3a5c' : '#1D9E75'
 
   function VerifiedBadge({ profile, small = false }) {
-    if (profile?.is_verified) {
-      return <span style={{ fontSize: small ? '9px' : '10px', background: '#d8f2ea', color: '#0d6e50', padding: small ? '1px 5px' : '2px 7px', borderRadius: '20px', fontWeight: '600', flexShrink: 0 }}>✅ 認証済み</span>
-    }
-    if (profile?.is_company) {
-      return <span style={{ fontSize: small ? '9px' : '10px', background: '#eef2f7', color: '#1a3a5c', padding: small ? '1px 5px' : '2px 7px', borderRadius: '20px', fontWeight: '600', flexShrink: 0 }}>🏢 法人</span>
-    }
+    if (profile?.is_verified) return <span style={{ fontSize: small ? '9px' : '10px', background: '#d8f2ea', color: '#0d6e50', padding: small ? '1px 5px' : '2px 7px', borderRadius: '20px', fontWeight: '600', flexShrink: 0 }}>✅ 認証済み</span>
+    if (profile?.is_company) return <span style={{ fontSize: small ? '9px' : '10px', background: '#eef2f7', color: '#1a3a5c', padding: small ? '1px 5px' : '2px 7px', borderRadius: '20px', fontWeight: '600', flexShrink: 0 }}>🏢 法人</span>
     return null
   }
 
@@ -227,9 +228,7 @@ function MessagesContent() {
   function FileMessage({ msg }) {
     if (!msg.file_url) return <div style={{ fontSize: '13px', lineHeight: '1.6' }}>{msg.content}</div>
     const isMe = msg.sender_id === user?.id
-    if (msg.file_type === 'image') {
-      return <img src={msg.file_url} alt={msg.file_name} style={{ maxWidth: '200px', borderRadius: '8px', display: 'block', cursor: 'pointer' }} onClick={() => window.open(msg.file_url, '_blank')} />
-    }
+    if (msg.file_type === 'image') return <img src={msg.file_url} alt={msg.file_name} style={{ maxWidth: '200px', borderRadius: '8px', display: 'block', cursor: 'pointer' }} onClick={() => window.open(msg.file_url, '_blank')} />
     return (
       <a href={msg.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: isMe ? '#fff' : '#1a1a18' }}>
         <span style={{ fontSize: '20px' }}>{msg.file_type === 'pdf' ? '📄' : '📎'}</span>
@@ -277,11 +276,13 @@ function MessagesContent() {
     </div>
   )
 
+  const NavComponent = isAdvisor ? AdvisorNavbar : isCompany ? CompanyNavbar : Navbar
+
   return (
     <div style={{ minHeight: '100vh', background: bg, fontFamily: 'system-ui, sans-serif' }}>
-      {isCompany ? <CompanyNavbar /> : <Navbar />}
+      <NavComponent />
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1.5rem 1.25rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '12px', height: 'calc(100vh - 120px)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'min(280px, 100%) 1fr', gap: '12px', height: 'calc(100vh - 120px)' }}>
 
           {/* 左サイドバー */}
           <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -296,7 +297,7 @@ function MessagesContent() {
                 {threads.length === 0 ? (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>まだメッセージがありません</div>
                 ) : threads.map(id => (
-                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', background: selectedDM === id ? (isCompany ? '#eef2f7' : '#f0eeea') : '#fff' }}>
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', background: selectedDM === id ? (isAdvisor ? '#f5f0ff' : isCompany ? '#eef2f7' : '#f0eeea') : '#fff' }}>
                     <Avatar profile={profiles[id]} onClick={() => router.push(`/profile/${id}`)} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div onClick={() => { setSelectedDM(id); setSelectedGroup(null) }} style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a18', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
@@ -315,7 +316,7 @@ function MessagesContent() {
                 {groups.length === 0 ? (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#a0a09c', fontSize: '13px' }}>グループがありません</div>
                 ) : groups.map(g => (
-                  <div key={g.id} onClick={() => { setSelectedGroup(g.id); setSelectedDM(null) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', cursor: 'pointer', background: selectedGroup === g.id ? (isCompany ? '#eef2f7' : '#f0eeea') : '#fff' }}>
+                  <div key={g.id} onClick={() => { setSelectedGroup(g.id); setSelectedDM(null) }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.06)', cursor: 'pointer', background: selectedGroup === g.id ? (isAdvisor ? '#f5f0ff' : isCompany ? '#eef2f7' : '#f0eeea') : '#fff' }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}>👥</div>
                     <div style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a18' }}>{g.name}</div>
                   </div>
@@ -330,7 +331,8 @@ function MessagesContent() {
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0a09c', fontSize: '13px' }}>相手またはグループを選んでください</div>
             ) : (
               <>
-                <div style={{ padding: '12px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: '8px', background: isCompany ? '#f8f9fb' : '#fff' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button onClick={() => { setSelectedDM(null); setSelectedGroup(null) }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>←</button>
                   {selectedDM ? (
                     <>
                       <Avatar profile={profiles[selectedDM]} size={28} onClick={() => router.push(`/profile/${selectedDM}`)} />
@@ -341,7 +343,7 @@ function MessagesContent() {
                     <><div style={{ fontSize: '18px' }}>👥</div><div style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a18' }}>{getGroupName(selectedGroup)}</div></>
                   )}
                   {selectedGroup && (
-                    <button onClick={() => setShowPoll(true)} style={{ marginLeft: 'auto', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', background: isCompany ? '#eef2f7' : '#f0eeea', color: '#1a1a18', border: 'none', cursor: 'pointer' }}>📊 投票を作成</button>
+                    <button onClick={() => setShowPoll(true)} style={{ marginLeft: 'auto', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', background: '#f0eeea', color: '#1a1a18', border: 'none', cursor: 'pointer' }}>📊 投票を作成</button>
                   )}
                 </div>
 
@@ -355,10 +357,15 @@ function MessagesContent() {
                         {selectedGroup && !isMe && senderProfile && (
                           <div onClick={() => router.push(`/profile/${senderProfile.id}`)} style={{ fontSize: '11px', color: '#a0a09c', marginBottom: '3px', paddingLeft: '4px', cursor: 'pointer' }}>{senderProfile.full_name || senderProfile.username}</div>
                         )}
-                        <div style={{ maxWidth: '75%', padding: m.file_type === 'image' ? '4px' : '8px 12px', borderRadius: isMe ? '12px 12px 2px 12px' : '2px 12px 12px 12px', background: isMe ? msgBg : (isCompany ? '#f0f2f5' : '#f0eeea'), color: isMe ? '#fff' : '#1a1a18' }}>
+                        <div style={{ maxWidth: '75%', padding: m.file_type === 'image' ? '4px' : '8px 12px', borderRadius: isMe ? '12px 12px 2px 12px' : '2px 12px 12px 12px', background: isMe ? msgBg : '#f0eeea', color: isMe ? '#fff' : '#1a1a18' }}>
                           <FileMessage msg={m} />
                         </div>
-                        <div style={{ fontSize: '10px', color: '#a0a09c', marginTop: '3px' }}>{formatTime(m.created_at)}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
+                          {isMe && selectedDM && (
+                            <span style={{ fontSize: '10px', color: m.is_read ? '#1D9E75' : '#a0a09c' }}>{m.is_read ? '既読' : '未読'}</span>
+                          )}
+                          <span style={{ fontSize: '10px', color: '#a0a09c' }}>{formatTime(m.created_at)}</span>
+                        </div>
                       </div>
                     )
                   })}
@@ -372,8 +379,7 @@ function MessagesContent() {
                       style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', marginBottom: '8px', boxSizing: 'border-box' }} />
                     {pollOptions.map((opt, i) => (
                       <div key={i} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                        <input value={opt} onChange={e => { const o = [...pollOptions]; o[i] = e.target.value; setPollOptions(o) }}
-                          placeholder={`選択肢 ${i + 1}`}
+                        <input value={opt} onChange={e => { const o = [...pollOptions]; o[i] = e.target.value; setPollOptions(o) }} placeholder={`選択肢 ${i + 1}`}
                           style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none' }} />
                         {pollOptions.length > 2 && (
                           <button onClick={() => setPollOptions(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#c04020', cursor: 'pointer', fontSize: '16px' }}>✕</button>
@@ -388,15 +394,15 @@ function MessagesContent() {
                   </div>
                 )}
 
-                <div style={{ padding: '10px 14px', borderTop: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', gap: '8px', alignItems: 'center', background: isCompany ? '#f8f9fb' : '#fff' }}>
-                  <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ width: '34px', height: '34px', borderRadius: '50%', background: isCompany ? '#eef2f7' : '#f0eeea', border: 'none', fontSize: '16px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ padding: '10px 14px', borderTop: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#f0eeea', border: 'none', fontSize: '16px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {uploading ? '⏳' : '📎'}
                   </button>
                   <input ref={fileInputRef} type="file" accept="image/*,.pdf,.zip,.doc,.docx,.xls,.xlsx,.pptx" onChange={uploadFile} style={{ display: 'none' }} />
                   <input value={content} onChange={e => setContent(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (selectedDM ? sendDM() : sendGroupMessage())}
                     placeholder="メッセージを入力... (Enterで送信)"
-                    style={{ flex: 1, padding: '8px 12px', borderRadius: '20px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', background: isCompany ? '#f0f2f5' : '#f5f4f0' }}
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '20px', border: '0.5px solid rgba(0,0,0,0.15)', fontSize: '13px', outline: 'none', background: '#f5f4f0' }}
                   />
                   <button onClick={selectedDM ? sendDM : sendGroupMessage} style={{ width: '34px', height: '34px', borderRadius: '50%', background: msgBg, color: '#fff', border: 'none', fontSize: '16px', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↑</button>
                 </div>
