@@ -4,6 +4,7 @@ import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import CompanyNavbar from '../../../components/CompanyNavbar'
+import Footer from '../../../components/Footer'
 
 export default function CompanyProfilePage() {
   const [user, setUser] = useState(null)
@@ -340,6 +341,7 @@ export default function CompanyProfilePage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

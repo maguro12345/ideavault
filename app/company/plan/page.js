@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import CompanyNavbar from '../../../components/CompanyNavbar'
+import Footer from '../../../components/Footer'
 
 export default function CompanyPlanPage() {
   const [profile, setProfile] = useState(null)
@@ -212,6 +213,7 @@ export default function CompanyPlanPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   )
 }

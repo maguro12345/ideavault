@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import CompanyNavbar from '../../../components/CompanyNavbar'
+import Footer from '../../../components/Footer'
 
 function CompanyIdeasContent() {
   const [user, setUser] = useState(null)
@@ -205,6 +206,7 @@ function CompanyIdeasContent() {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

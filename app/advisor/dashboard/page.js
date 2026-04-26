@@ -4,6 +4,7 @@ import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdvisorNavbar from '../../../components/AdvisorNavbar'
+import Footer from '../../../components/Footer'
 
 export default function AdvisorDashboard() {
   const [user, setUser] = useState(null)
@@ -145,6 +146,7 @@ export default function AdvisorDashboard() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

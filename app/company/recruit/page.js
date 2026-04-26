@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import CompanyNavbar from '../../../components/CompanyNavbar'
+import Footer from '../../../components/Footer'
 
 export default function RecruitPage() {
   const [user, setUser] = useState(null)
@@ -150,6 +151,7 @@ export default function RecruitPage() {
           </div>
         ))}
       </div>
+      <Footer />
     </div>
   )
 }
